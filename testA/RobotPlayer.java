@@ -4,9 +4,18 @@ import battlecode.common.*;
 
 import java.util.Random;
 
+/**
+ * testA
+ *  - send scouts out to lure enemy away
+ *    - travel towards zombie dens and then towards enemy
+ *  - build turrets around archons
+ *  - find optimal turret/scout ratio
+ */
 public class RobotPlayer {
 	static Random random;
 	static RobotController robot;
+	static Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
+        Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
     
     public static void run(RobotController rc) {
         robot = rc;
@@ -39,12 +48,41 @@ public class RobotPlayer {
     }
     
     static void archon() {
-    	// initialize
+    	Direction open = directions[random.nextInt(8)];
+    	try {
+	    	while (robot.isLocationOccupied(robot.getLocation().add(open)))
+	    		open = directions[random.nextInt(8)];
+    	} catch (Exception e) {}
     	
+    	double SCOUT_RATIO = 0.01;
+    	double TURRET_RATIO = 0.5;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-	    			// loop
+	    			double rand = random.nextDouble();
+	    			if (rand < SCOUT_RATIO) {
+		    			if (robot.canBuild(open, RobotType.SCOUT))
+		    				robot.build(open, RobotType.SCOUT);
+	    			} else if (rand < TURRET_RATIO) {
+	    				Direction dir = directions[random.nextInt(8)];
+	    				for (int i = 0; i < 8; i++)
+			    			if (dir != open && robot.canBuild(dir, RobotType.TURRET))
+			    				robot.build(dir, RobotType.TURRET);
+			    			else
+			    				dir = dir.rotateLeft();
+	    			} else {
+		    			RobotInfo[] allies = robot.senseNearbyRobots(2, robot.getTeam());
+		    			for (int i = 0; i < allies.length; i++)
+		    				if (allies[i].health < allies[i].maxHealth)
+		    					robot.repair(allies[i].location);
+		    			
+	    				Direction dir = directions[random.nextInt(8)];
+	    				for (int i = 0; i < 8; i++)
+		    				if (robot.senseRubble(robot.getLocation().add(dir)) > 0.1)
+		    					robot.clearRubble(dir);
+			    			else
+			    				dir = dir.rotateLeft();
+	    			}
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
@@ -78,12 +116,21 @@ public class RobotPlayer {
     }
     
     static void scout() {
-    	// initialize
+    	Direction open = directions[random.nextInt(8)];
+    	try {
+	    	while (!robot.canMove(open))
+	    		open = directions[random.nextInt(8)];
+    	} catch (Exception e) {}
     	
+    	double MOVE_RATIO = 0.5;
 		while (true) {
 	    	try {
-	    		if (robot.isCoreReady()) {
-	    			// loop
+	    		if (robot.isCoreReady() && random.nextDouble() < MOVE_RATIO) {
+	    			if (robot.canMove(open))
+	    				robot.move(open);
+	    			else
+	    		    	while (!robot.canMove(open))
+	    		    		open = directions[random.nextInt(8)];
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
@@ -104,12 +151,14 @@ public class RobotPlayer {
     }
     
     static void turret() {
-    	// initialize
-    	
+    	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-	    			// loop
+	    			RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+	    			for (int i = 0; i < robots.length; i++)
+	    				if (robots[i].team != robot.getTeam())
+	    					robot.attackLocation(robots[i].location);
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
