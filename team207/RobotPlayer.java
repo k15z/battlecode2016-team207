@@ -2,7 +2,7 @@ package team207;
 
 import battlecode.common.*;
 
-import java.util.Random;
+import java.util.*;
 
 /**
  * C for CIA... it plays all kinds of dirty tricks :)
@@ -55,14 +55,18 @@ public class RobotPlayer {
     	Signal ourSignal = null;
     	Signal[] signals = robot.emptySignalQueue();
     	for (Signal signal : signals)
-    		if (signal.getMessage()[0] == 2015)
+    		if (signal.getTeam() == robot.getTeam())
     			ourSignal = signal;
     	
     	// initialize
     	if (ourSignal == null) {
-    		int value = (robot.getLocation().x << 16) | robot.getLocation().y;
-        	robot.broadcastMessageSignal(2015, value, 1000);
+        	robot.broadcastMessageSignal(robot.getLocation().x, robot.getLocation().y, 1000);
         	
+	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
+	    		Clock.yield();
+	    	if (robot.canBuild(Direction.NORTH, RobotType.SCOUT))
+	    		robot.build(Direction.NORTH, RobotType.SCOUT);
+	    	
         	for (Direction direction : oddDir) {
     	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
     	    		Clock.yield();
@@ -71,8 +75,8 @@ public class RobotPlayer {
         	}
     	}
     	else {
-    		int x = ourSignal.getMessage()[1] >> 16;
-    		int y = ourSignal.getMessage()[1] & 0xFFFF;
+    		int x = ourSignal.getMessage()[0];
+    		int y = ourSignal.getMessage()[1];
         	
         	while (robot.getLocation().distanceSquaredTo(new MapLocation(x,y)) > 9) {
         		try {
@@ -136,11 +140,17 @@ public class RobotPlayer {
     
     static void scout() {
     	// initialize
-    	
+    	List<Signal> intercepts = new LinkedList<Signal>();
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-	    			// loop
+	    	    	Signal[] signals = robot.emptySignalQueue();
+	    	    	for (Signal signal : signals)
+	    	    		if (signal.getTeam() != robot.getTeam())
+	    	    			intercepts.add(signal);
+	    	    	
+	    	    	Signal hack = intercepts.get(random.nextInt(intercepts.size()));
+	    	    	robot.broadcastMessageSignal(hack.getMessage()[0], hack.getMessage()[1], 1000);
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
@@ -161,7 +171,7 @@ public class RobotPlayer {
 		    		Direction dir = oddDir[random.nextInt(4)];
 		    		if (robot.canMove(dir))
 		    			robot.move(dir);
-		    	} catch (Exception e) {}
+		    	} catch (Exception e) { }
 	        	while (!robot.isCoreReady())
 	        		Clock.yield();
 			}
