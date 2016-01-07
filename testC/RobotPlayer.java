@@ -9,6 +9,7 @@ import java.util.Random;
  *   - hide behind turrets
  *   - send scouts find zombie dens and enemy locations
  *   - send soldiers, on schedule, to lure zombies to enemy locations
+ *   - hijack communications
  */
 public class RobotPlayer {
 	static Random random;
@@ -47,14 +48,49 @@ public class RobotPlayer {
     }
     
     static void archon() throws GameActionException {
-    	// initialize
+    	// me! me! me!
     	while (!robot.isCoreReady())
     		Clock.yield();
-    	for (Direction direction : oddDir) {
-	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
-	    		Clock.yield();
-	    	if (robot.canBuild(direction, RobotType.TURRET))
-	    		robot.build(direction, RobotType.TURRET);
+    	
+    	Signal ourSignal = null;
+    	Signal[] signals = robot.emptySignalQueue();
+    	for (Signal signal : signals)
+    		if (signal.getMessage()[0] == 2019)
+    			ourSignal = signal;
+    	
+    	// initialize
+    	if (ourSignal == null) {
+    		int value = (robot.getLocation().x << 16) | robot.getLocation().y;
+        	robot.broadcastMessageSignal(2019, value, 1000);
+        	
+        	for (Direction direction : oddDir) {
+    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
+    	    		Clock.yield();
+    	    	if (robot.canBuild(direction, RobotType.TURRET))
+    	    		robot.build(direction, RobotType.TURRET);
+        	}
+    	}
+    	else {
+    		int x = ourSignal.getMessage()[1] >> 16;
+    		int y = ourSignal.getMessage()[1] & 0xFFFF;
+        	
+        	while (robot.getLocation().distanceSquaredTo(new MapLocation(x,y)) > 9) {
+        		try {
+        			Direction dir = robot.getLocation().directionTo(new MapLocation(x,y));
+        			if (robot.canMove(dir))
+        				robot.move(dir);
+        			else if (robot.canMove(dir.rotateLeft()))
+        				robot.move(dir.rotateLeft());
+        			else if (robot.canMove(dir.rotateRight()))
+        				robot.move(dir.rotateRight());
+        			else if (robot.canMove(dir.rotateLeft().rotateLeft()))
+        				robot.move(dir.rotateLeft().rotateLeft());
+        			else if (robot.canMove(dir.rotateRight().rotateRight()))
+        				robot.move(dir.rotateRight().rotateRight());
+        		}catch(Exception e) {e.printStackTrace();}
+            	while (!robot.isCoreReady())
+            		Clock.yield();
+        	}
     	}
     	
 		while (true) {
@@ -125,7 +161,7 @@ public class RobotPlayer {
 		    		Direction dir = oddDir[random.nextInt(4)];
 		    		if (robot.canMove(dir))
 		    			robot.move(dir);
-		    	} catch (Exception e) {}
+		    	} catch (Exception e) { }
 	        	while (!robot.isCoreReady())
 	        		Clock.yield();
 			}

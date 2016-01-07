@@ -5,21 +5,19 @@ import battlecode.common.*;
 import java.util.Random;
 
 /**
- * testA1
- *  - send scouts out to lure enemy away
- *    - travel towards zombie dens and then towards enemy
- *  - build turrets around archons
- *  - find optimal turret/scout ratio
- *  - move archons around
- *  - build turret clusters
+ * C for CIA... it plays all kinds of dirty tricks :)
+ *   - hide behind turrets
+ *   - send scouts find zombie dens and enemy locations
+ *   - send soldiers, on schedule, to lure zombies to enemy locations
+ *   - hijack communications
  */
 public class RobotPlayer {
 	static Random random;
 	static RobotController robot;
-	static Direction[] directions = {Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
-        Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST};
+	static Direction[] evenDir = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+	static Direction[] oddDir = {Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST};
     
-    public static void run(RobotController rc) {
+    public static void run(RobotController rc) throws Exception {
         robot = rc;
         random = new Random(robot.getID());
         switch (robot.getType()) {
@@ -49,53 +47,61 @@ public class RobotPlayer {
         }
     }
     
-    static void archon() {
-    	Direction open = directions[random.nextInt(8)];
-    	try {
-	    	while (robot.isLocationOccupied(robot.getLocation().add(open)))
-	    		open = directions[random.nextInt(8)];
-    	} catch (Exception e) {}
+    static void archon() throws GameActionException {
+    	// me! me! me!
+    	while (!robot.isCoreReady())
+    		Clock.yield();
     	
-    	double SCOUT_RATIO = 0.01;
-    	double TURRET_RATIO = 0.5;
+    	Signal ourSignal = null;
+    	Signal[] signals = robot.emptySignalQueue();
+    	for (Signal signal : signals)
+    		if (signal.getMessage()[0] == 2015)
+    			ourSignal = signal;
+    	
+    	// initialize
+    	if (ourSignal == null) {
+    		int value = (robot.getLocation().x << 16) | robot.getLocation().y;
+        	robot.broadcastMessageSignal(2015, value, 1000);
+        	
+        	for (Direction direction : oddDir) {
+    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
+    	    		Clock.yield();
+    	    	if (robot.canBuild(direction, RobotType.TURRET))
+    	    		robot.build(direction, RobotType.TURRET);
+        	}
+    	}
+    	else {
+    		int x = ourSignal.getMessage()[1] >> 16;
+    		int y = ourSignal.getMessage()[1] & 0xFFFF;
+        	
+        	while (robot.getLocation().distanceSquaredTo(new MapLocation(x,y)) > 9) {
+        		try {
+        			Direction dir = robot.getLocation().directionTo(new MapLocation(x,y));
+        			if (robot.canMove(dir))
+        				robot.move(dir);
+        			else if (robot.canMove(dir.rotateLeft()))
+        				robot.move(dir.rotateLeft());
+        			else if (robot.canMove(dir.rotateRight()))
+        				robot.move(dir.rotateRight());
+        			else if (robot.canMove(dir.rotateLeft().rotateLeft()))
+        				robot.move(dir.rotateLeft().rotateLeft());
+        			else if (robot.canMove(dir.rotateRight().rotateRight()))
+        				robot.move(dir.rotateRight().rotateRight());
+        		}catch(Exception e) {e.printStackTrace();}
+            	while (!robot.isCoreReady())
+            		Clock.yield();
+        	}
+    	}
+    	
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-	    			double rand = random.nextDouble();
-	    			if (rand < SCOUT_RATIO) {
-		    			if (robot.canBuild(open, RobotType.SCOUT))
-		    				robot.build(open, RobotType.SCOUT);
-	    			} else if (rand < TURRET_RATIO) {
-	    				Direction dir = directions[random.nextInt(8)];
-	    				for (int i = 0; i < 8; i++)
-			    			if (dir != open && robot.canBuild(dir, RobotType.TURRET))
-			    				robot.build(dir, RobotType.TURRET);
-			    			else
-			    				dir = dir.rotateLeft();
-	    			} else {
-		    			RobotInfo[] allies = robot.senseNearbyRobots(2, robot.getTeam());
-		    			if (allies.length >= 5) {
-		    				if (robot.canMove(open))
-		    					robot.move(open);
-		    				if (robot.canMove(open))
-		    					robot.move(open);
-		    				open = directions[random.nextInt(8)];
-		    		    	try {
-		    			    	while (robot.isLocationOccupied(robot.getLocation().add(open)))
-		    			    		open = directions[random.nextInt(8)];
-		    		    	} catch (Exception e) {}
-		    			}
-		    			for (int i = 0; i < allies.length; i++)
-		    				if (allies[i].health < allies[i].maxHealth)
-		    					robot.repair(allies[i].location);
-		    			
-	    				Direction dir = directions[random.nextInt(8)];
-	    				for (int i = 0; i < 8; i++)
-		    				if (robot.senseRubble(robot.getLocation().add(dir)) > 0.1)
-		    					robot.clearRubble(dir);
-			    			else
-			    				dir = dir.rotateLeft();
-	    			}
+	    	    	for (Direction direction : evenDir) {
+	    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
+	    		    		Clock.yield();
+	    		    	if (robot.canBuild(direction, RobotType.TURRET))
+	    		    		robot.build(direction, RobotType.TURRET);
+	    	    	}
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
@@ -129,28 +135,6 @@ public class RobotPlayer {
     }
     
     static void scout() {
-    	Direction open = directions[random.nextInt(8)];
-    	try {
-	    	while (!robot.canMove(open))
-	    		open = directions[random.nextInt(8)];
-    	} catch (Exception e) {}
-    	
-    	double MOVE_RATIO = 0.5;
-		while (true) {
-	    	try {
-	    		if (robot.isCoreReady() && random.nextDouble() < MOVE_RATIO) {
-	    			if (robot.canMove(open))
-	    				robot.move(open);
-	    			else
-	    		    	while (!robot.canMove(open))
-	    		    		open = directions[random.nextInt(8)];
-	    		}
-	    	} catch (Exception e) {}
-	    	Clock.yield();
-		}
-    }
-    
-    static void ttm() {
     	// initialize
     	
 		while (true) {
@@ -163,15 +147,66 @@ public class RobotPlayer {
 		}
     }
     
+    static void ttm() {
+    	// initialize
+    	while (!robot.isCoreReady())
+    		Clock.yield();
+    	
+    	if (!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
+				!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
+	    	// navigate
+			while (!robot.canMove(Direction.NORTH) && !robot.canMove(Direction.EAST) && 
+					!robot.canMove(Direction.SOUTH) && !robot.canMove(Direction.WEST)) {
+		    	try {
+		    		Direction dir = oddDir[random.nextInt(4)];
+		    		if (robot.canMove(dir))
+		    			robot.move(dir);
+		    	} catch (Exception e) {}
+	        	while (!robot.isCoreReady())
+	        		Clock.yield();
+			}
+			
+	    	// displace
+	    	try {
+		    	for (Direction dir : evenDir) {
+					if (robot.canMove(dir)) {
+						robot.move(dir);
+						break;
+					}
+		    	}
+	    	} catch (Exception e) {}
+    	}
+    	
+		// end
+    	while (!robot.isCoreReady())
+    		Clock.yield();
+		try {
+			robot.unpack();
+    	} catch (Exception e) {}
+		return;
+    }
+    
     static void turret() {
+    	// initialize
+    	try {
+	    	while (!robot.isCoreReady())
+	    		Clock.yield();
+	    	if (!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
+				!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
+	    		robot.pack();
+	    		ttm();
+	    	}
+    	}catch(Exception e) {}
+	    	
     	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-	    			RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
-	    			for (int i = 0; i < robots.length; i++)
-	    				if (robots[i].team != robot.getTeam())
-	    					robot.attackLocation(robots[i].location);
+					RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+					for (int i = 0; i < robots.length; i++)
+						if (robots[i].team != robot.getTeam())
+							robot.attackLocation(robots[i].location);
+					Clock.yield();
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
