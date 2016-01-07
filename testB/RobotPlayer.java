@@ -40,11 +40,13 @@ public class RobotPlayer {
     
     static void archon() {
     	// initialize
-    	
+    	int sensorRange = robot.getType().sensorRadiusSquared;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    			// loop
+	    			robot.senseNearbyRobots(sensorRange, Team.ZOMBIE);
+	    			robot.move(arg0);
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
