@@ -45,8 +45,8 @@ public class RobotPlayer {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    			// loop
-	    			robot.senseNearbyRobots(sensorRange, Team.ZOMBIE);
-	    			robot.move(arg0);
+	//    			robot.senseNearbyRobots(sensorRange, Team.ZOMBIE);
+	  //  			robot.move(arg0);
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
