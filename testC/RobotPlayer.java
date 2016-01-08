@@ -84,10 +84,6 @@ public class RobotPlayer {
         			else{
         				robot.clearRubble(dir);
         			}
-        			//else if (robot.canMove(dir.rotateLeft().rotateLeft()))
-        				//robot.move(dir.rotateLeft().rotateLeft());
-        			//else if (robot.canMove(dir.rotateRight().rotateRight()))
-        				//robot.move(dir.rotateRight().rotateRight());
         		}catch(Exception e) {e.printStackTrace();}
             	while (!robot.isCoreReady())
             		Clock.yield();
@@ -99,47 +95,45 @@ public class RobotPlayer {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    	    	for (Direction direction : evenDir) {
-	    	    		
+		    	    	//if is being attacked, escape (DOESNT WORK!!!) 
+		    	    	/*while (!robot.isCoreReady())
+		    	    		Clock.yield();
+		    	    	double health = robot.getHealth();
+		    	    	if(health < 500){
+			    			//while(robot.senseNearbyRobots(9, Team.ZOMBIE).length > 2)
+			    			while(true){
+			    				escape();
+			    			}
+			    		}
+			    		if(health < 200){
+			    			while(robot.senseNearbyRobots(5, Team.ZOMBIE).length > 0)
+			    				escape();
+			    			if(robot.canBuild(Direction.NORTH, RobotType.SCOUT))
+			    				robot.build(Direction.NORTH, RobotType.SCOUT);
+			    		}*/
+			    		
 	    	    		if (count%5 != 0) {
-		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
+		    		    	while (!robot.isCoreReady())
 		    		    		Clock.yield();
-		    		    	if (robot.canBuild(direction, RobotType.TURRET))
-		    		    		robot.build(direction, RobotType.TURRET);
-	    	    		} else {
-		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
+	    	    			if (robot.hasBuildRequirements(RobotType.TURRET)) {
+			    		    	if (robot.canBuild(direction, RobotType.TURRET)) {
+			    		    		robot.build(direction, RobotType.TURRET);
+				    	    		count++;
+			    		    	}
+	    	    			}
+	    	    		} else if (robot.hasBuildRequirements(RobotType.SCOUT)) {
+		    		    	while (!robot.isCoreReady())
 		    		    		Clock.yield();
-		    		    	if (robot.canBuild(direction, RobotType.SCOUT))
-		    		    		robot.build(direction, RobotType.SCOUT);
-	    	    		}
-	    	    		count++;
-	    	    		
-	    	    		
-	    	    		/*if(count == 10){
-	    	    			int flag = 0;
-	    	    			while(flag < 4){
-		    	    			while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
-			    		    		Clock.yield();
-			    		    	if (robot.canBuild(direction, RobotType.SCOUT)){
+	    	    			if (robot.hasBuildRequirements(RobotType.SCOUT)) {
+			    		    	if (robot.canBuild(direction, RobotType.SCOUT)) {
 			    		    		robot.build(direction, RobotType.SCOUT);
-			    		    		flag++;
+				    	    		count++;
 			    		    	}
 	    	    			}
 	    	    		}
-	    	    		else if (count < 10 ||count%5 != 0) {
-		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
-		    		    		Clock.yield();
-		    		    	if (robot.canBuild(direction, RobotType.TURRET))
-		    		    		robot.build(direction, RobotType.TURRET);
-	    	    		} else {
-		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
-		    		    		Clock.yield();
-		    		    	if (robot.canBuild(direction, RobotType.SCOUT))
-		    		    		robot.build(direction, RobotType.SCOUT);
-	    	    		}
-	    	    		count++;*/
 	    	    	}
 	    		}
-	    	} catch (Exception e) {}
+	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
 		}
     }
@@ -183,6 +177,8 @@ public class RobotPlayer {
 		    		while (!robot.isCoreReady() && !robot.canMove(dir))
 		    			dir = oddDir[random.nextInt(4)];
 		    		robot.move(dir);
+	    			if (Clock.getBytecodesLeft() < 8500)
+	    				Clock.yield();
 	    		} catch(Exception e) {};
     		}
     		
@@ -190,6 +186,8 @@ public class RobotPlayer {
     		for (RobotInfo enemy : enemies)
 	    		try {
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
+	    			if (Clock.getBytecodesLeft() < 8500)
+	    				Clock.yield();
 	    		} catch(Exception e) {};
 	    	
 	    	//moves scouts for ttms to leave
@@ -206,9 +204,15 @@ public class RobotPlayer {
     					else if(robot.canMove(Direction.SOUTH_WEST))
     						robot.move(Direction.SOUTH_WEST);
     				}
+	    			if (Clock.getBytecodesLeft() < 8500)
+	    				Clock.yield();
     			}
     		} catch(Exception e) {};
-	    		
+	    	
+    		
+			if (Clock.getBytecodesLeft() < 8500)
+				Clock.yield();
+    	
     		//avoids scouts going too far
     		RobotInfo[] farBuddies = robot.senseNearbyRobots(9, robot.getTeam());
     		try {
@@ -221,21 +225,21 @@ public class RobotPlayer {
 	    					min = distance;
 	    					nearestBuddy = farBuddy;
 	    				}
-	    				if(min > 1){
-	    					Direction direction = robot.getLocation().directionTo(nearestBuddy.location);
-	    					if(robot.canMove(direction))
-	    						robot.move(direction);
-	    					else if(robot.canMove(direction.rotateLeft()))
-	    						robot.move(direction.rotateLeft());
-	    					else if(robot.canMove(direction.rotateRight()))
-							robot.move(direction.rotateRight());
-	    					else if(robot.canMove(direction.rotateRight().rotateRight()))
-	    						robot.move(direction.rotateRight().rotateRight());
-	    					else if(robot.canMove(direction.rotateLeft().rotateLeft()))
-	    						robot.move(direction.rotateLeft().rotateLeft());
-	    				}
-    				}	
+    				}
     			}
+				if(min > 1){
+					Direction direction = robot.getLocation().directionTo(nearestBuddy.location);
+					if(robot.canMove(direction))
+						robot.move(direction);
+					else if(robot.canMove(direction.rotateLeft()))
+						robot.move(direction.rotateLeft());
+					else if(robot.canMove(direction.rotateRight()))
+						robot.move(direction.rotateRight());
+					else if(robot.canMove(direction.rotateRight().rotateRight()))
+						robot.move(direction.rotateRight().rotateRight());
+					else if(robot.canMove(direction.rotateLeft().rotateLeft()))
+						robot.move(direction.rotateLeft().rotateLeft());
+				}	
     		} catch(Exception e) {};
     	}
     }
@@ -325,5 +329,44 @@ public class RobotPlayer {
 	    	} catch (Exception e) {}
 	    	Clock.yield();
 		}
+    }
+
+    static void escape(){
+    	System.out.println("Escape?");
+    	try {
+			float min = 1000;
+    		int sightRange = 35;
+    		RobotInfo nearestEnemy = null;
+    		RobotInfo[] enemies = robot.senseNearbyRobots(sightRange, Team.ZOMBIE);
+    		for(RobotInfo enemy : enemies){
+    			float distance = robot.getLocation().distanceSquaredTo(enemy.location);
+				if(distance < min){
+					min = distance;
+					nearestEnemy = enemy;
+				}
+		    	while (!robot.isCoreReady())
+		    		Clock.yield();
+				Direction dir = nearestEnemy.location.directionTo(robot.getLocation());
+				if(robot.canMove(dir))
+					robot.move(dir);
+				else if(robot.canMove(dir.rotateLeft()))
+					robot.move(dir.rotateLeft());
+				else if(robot.canMove(dir.rotateRight()))
+					robot.move(dir.rotateRight());
+				else if(robot.canMove(dir.rotateLeft().rotateLeft()))
+					robot.move(dir.rotateLeft().rotateLeft());
+				else if(robot.canMove(dir.rotateRight().rotateRight()))
+					robot.move(dir);
+				else if(robot.canMove(dir.rotateRight().rotateRight().rotateRight()))
+					robot.move(dir);
+				else if(robot.canMove(dir.rotateLeft().rotateLeft().rotateLeft()))
+					robot.move(dir);
+				else{
+					if(robot.canBuild(dir.rotateLeft().rotateLeft().rotateLeft().rotateLeft(), RobotType.GUARD))
+						robot.build(dir.rotateLeft().rotateLeft().rotateLeft().rotateLeft(), RobotType.GUARD);
+				}
+    		}
+    		
+    	} catch (Exception e) {e.printStackTrace();}
     }
 }
