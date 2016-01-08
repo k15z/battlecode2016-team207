@@ -1,4 +1,4 @@
-package testB1;
+package JustRun2;
 
 import battlecode.common.*;
 
@@ -57,6 +57,12 @@ public class RobotPlayer {
 	    			int hostiles = 0;
 	    			MapLocation myLocation = robot.getLocation();
 	    			RobotInfo[] bots = robot.senseNearbyRobots(sensorRange);
+	    			RobotInfo[] nearZombies = robot.senseNearbyRobots(9, Team.ZOMBIE);
+	    			int fastZombies = 0;
+	    			for(RobotInfo isFastZombie : nearZombies)
+	    				if(isFastZombie.type == RobotType.FASTZOMBIE)
+	    					fastZombies++;
+	    			
 		    		if(bots.length > 0){	
 	    				for (RobotInfo bot : bots) {
 		    				double current = 0.0;
@@ -75,7 +81,7 @@ public class RobotPlayer {
 		    				score[d2i(myLocation.directionTo(bot.location))] += current;
 		    			}
 		    			
-		    			if (hostiles >= 4 && decoy == 0) {
+		    			if (fastZombies > 0 && decoy == 0 && hostiles < 10) {
 			    			// many hostiles
 		    				Direction dir = i2d(random.nextInt(8));
 		    				if (robot.canBuild(dir, RobotType.SOLDIER)) {
