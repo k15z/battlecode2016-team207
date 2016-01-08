@@ -55,18 +55,12 @@ public class RobotPlayer {
     	Signal ourSignal = null;
     	Signal[] signals = robot.emptySignalQueue();
     	for (Signal signal : signals)
-    		if (signal.getTeam() == robot.getTeam())
+    		if (signal.getTeam() == robot.getTeam() && signal.getMessage()[0] == 2019)
     			ourSignal = signal;
     	
     	// initialize
     	if (ourSignal == null) {
-        	robot.broadcastMessageSignal(robot.getLocation().x, robot.getLocation().y, 1000);
-        	
-	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
-	    		Clock.yield();
-	    	if (robot.canBuild(Direction.NORTH, RobotType.SCOUT))
-	    		robot.build(Direction.NORTH, RobotType.SCOUT);
-	    	
+        	robot.broadcastMessageSignal(2019, (robot.getLocation().x << 16) | robot.getLocation().y, 1000);
         	for (Direction direction : oddDir) {
     	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
     	    		Clock.yield();
@@ -75,8 +69,8 @@ public class RobotPlayer {
         	}
     	}
     	else {
-    		int x = ourSignal.getMessage()[0];
-    		int y = ourSignal.getMessage()[1];
+    		int x = ourSignal.getMessage()[1] >> 16;
+    		int y = ourSignal.getMessage()[1] & 0xFFFF;
         	
         	while (robot.getLocation().distanceSquaredTo(new MapLocation(x,y)) > 9) {
         		try {
@@ -97,14 +91,23 @@ public class RobotPlayer {
         	}
     	}
     	
+		int count = 1;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    	    	for (Direction direction : evenDir) {
-	    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
-	    		    		Clock.yield();
-	    		    	if (robot.canBuild(direction, RobotType.TURRET))
-	    		    		robot.build(direction, RobotType.TURRET);
+	    	    		if (count%4 != 0) {
+		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
+		    		    		Clock.yield();
+		    		    	if (robot.canBuild(direction, RobotType.TURRET))
+		    		    		robot.build(direction, RobotType.TURRET);
+	    	    		} else {
+		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
+		    		    		Clock.yield();
+		    		    	if (robot.canBuild(direction, RobotType.SCOUT))
+		    		    		robot.build(direction, RobotType.SCOUT);
+	    	    		}
+	    		    	count++;
 	    	    	}
 	    		}
 	    	} catch (Exception e) {}
@@ -139,22 +142,28 @@ public class RobotPlayer {
     }
     
     static void scout() {
-    	// initialize
-    	List<Signal> intercepts = new LinkedList<Signal>();
-		while (true) {
-	    	try {
-	    		if (robot.isCoreReady()) {
-	    	    	Signal[] signals = robot.emptySignalQueue();
-	    	    	for (Signal signal : signals)
-	    	    		if (signal.getTeam() != robot.getTeam())
-	    	    			intercepts.add(signal);
-	    	    	
-	    	    	Signal hack = intercepts.get(random.nextInt(intercepts.size()));
-	    	    	robot.broadcastMessageSignal(hack.getMessage()[0], hack.getMessage()[1], 1000);
-	    		}
-	    	} catch (Exception e) {}
-	    	Clock.yield();
-		}
+    	while (!robot.isCoreReady())
+    		Clock.yield();
+    	
+    	while (true) {
+    		while(!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
+					!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
+	    		try {
+		    		Direction dir = oddDir[random.nextInt(4)];
+		    		if (robot.senseRubble(robot.getLocation().add(dir)) > 50)
+		    			robot.clearRubble(dir);
+		    		while (!robot.isCoreReady() && !robot.canMove(dir))
+		    			dir = oddDir[random.nextInt(4)];
+		    		robot.move(dir);
+	    		} catch(Exception e) {};
+    		}
+    		
+    		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
+    		for (RobotInfo enemy : enemies)
+	    		try {
+	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
+	    		} catch(Exception e) {};
+    	}
     }
     
     static void ttm() {
@@ -212,6 +221,12 @@ public class RobotPlayer {
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
+	    			Signal[] signals = robot.emptySignalQueue();
+	    			for (Signal s : signals) {
+	    				if (s.getMessage()[0] != 2019 && robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1])))
+	    					robot.attackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]));
+	    			}
+	    			
 					RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
 					for (int i = 0; i < robots.length; i++)
 						if (robots[i].team != robot.getTeam())
