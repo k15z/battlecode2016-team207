@@ -149,17 +149,27 @@ public class RobotPlayer {
     		Clock.yield();
     	
     	while (true) {
+    		Direction prev = null;
     		while(!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
 					!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
 	    		try {
-		    		Direction dir = oddDir[random.nextInt(4)];
+	    			Direction dir = oddDir[random.nextInt(4)];
 		    		if (robot.senseRubble(robot.getLocation().add(dir)) > 50)
 		    			robot.clearRubble(dir);
 		    		while (!robot.isCoreReady() && !robot.canMove(dir))
 		    			dir = oddDir[random.nextInt(4)];
 		    		robot.move(dir);
+		    		prev = dir;
 	    		} catch(Exception e) {};
     		}
+    		try {
+    			System.out.println("???");
+    			if (robot.canMove(prev.opposite()))
+    				robot.move(prev.opposite());
+    		} catch(Exception e) {e.printStackTrace();};
+    		
+    		//return position
+    		
     		
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)

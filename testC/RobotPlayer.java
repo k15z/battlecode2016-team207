@@ -94,12 +94,13 @@ public class RobotPlayer {
         	}
     	}
     	
-		int count = 1;
+		int count = 0;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    	    	for (Direction direction : evenDir) {
-	    	    		if (count%6 != 0) {
+	    	    		
+	    	    		if (count%5 != 0) {
 		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
 		    		    		Clock.yield();
 		    		    	if (robot.canBuild(direction, RobotType.TURRET))
@@ -110,7 +111,32 @@ public class RobotPlayer {
 		    		    	if (robot.canBuild(direction, RobotType.SCOUT))
 		    		    		robot.build(direction, RobotType.SCOUT);
 	    	    		}
-	    		    	count++;
+	    	    		count++;
+	    	    		
+	    	    		
+	    	    		/*if(count == 10){
+	    	    			int flag = 0;
+	    	    			while(flag < 4){
+		    	    			while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
+			    		    		Clock.yield();
+			    		    	if (robot.canBuild(direction, RobotType.SCOUT)){
+			    		    		robot.build(direction, RobotType.SCOUT);
+			    		    		flag++;
+			    		    	}
+	    	    			}
+	    	    		}
+	    	    		else if (count < 10 ||count%5 != 0) {
+		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
+		    		    		Clock.yield();
+		    		    	if (robot.canBuild(direction, RobotType.TURRET))
+		    		    		robot.build(direction, RobotType.TURRET);
+	    	    		} else {
+		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
+		    		    		Clock.yield();
+		    		    	if (robot.canBuild(direction, RobotType.SCOUT))
+		    		    		robot.build(direction, RobotType.SCOUT);
+	    	    		}
+	    	    		count++;*/
 	    	    	}
 	    		}
 	    	} catch (Exception e) {}
@@ -149,12 +175,11 @@ public class RobotPlayer {
     		Clock.yield();
     	
     	while (true) {
-    		while(!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
-					!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
+    		Direction dir = null;
+    		while(!robot.canMove(Direction.NORTH) && !robot.canMove(Direction.EAST) && 
+					!robot.canMove(Direction.SOUTH) && !robot.canMove(Direction.WEST)) {
 	    		try {
-		    		Direction dir = oddDir[random.nextInt(4)];
-		    		if (robot.senseRubble(robot.getLocation().add(dir)) > 50)
-		    			robot.clearRubble(dir);
+	    			dir = oddDir[random.nextInt(4)];
 		    		while (!robot.isCoreReady() && !robot.canMove(dir))
 		    			dir = oddDir[random.nextInt(4)];
 		    		robot.move(dir);
@@ -166,6 +191,52 @@ public class RobotPlayer {
 	    		try {
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {};
+	    	
+	    	//moves scouts for ttms to leave
+	    	RobotInfo[] nearBuddies = robot.senseNearbyRobots(2, robot.getTeam()); 
+    		try {
+    			for(RobotInfo isttm: nearBuddies){
+    				if(isttm.type == RobotType.TTM){
+    					if(robot.canMove(Direction.NORTH_EAST))
+    						robot.move(Direction.NORTH_EAST);
+    					else if(robot.canMove(Direction.NORTH_WEST))
+    						robot.move(Direction.NORTH_WEST);
+    					else if(robot.canMove(Direction.SOUTH_EAST))
+    						robot.move(Direction.SOUTH_EAST);
+    					else if(robot.canMove(Direction.SOUTH_WEST))
+    						robot.move(Direction.SOUTH_WEST);
+    				}
+    			}
+    		} catch(Exception e) {};
+	    		
+    		//avoids scouts going too far
+    		RobotInfo[] farBuddies = robot.senseNearbyRobots(9, robot.getTeam());
+    		try {
+    			float min = 10;
+    			RobotInfo nearestBuddy = null;
+    			for(RobotInfo farBuddy: farBuddies){
+    				if(farBuddy.type == RobotType.TURRET){
+    					float distance = robot.getLocation().distanceSquaredTo(farBuddy.location);
+	    				if(distance < min){
+	    					min = distance;
+	    					nearestBuddy = farBuddy;
+	    				}
+	    				if(min > 1){
+	    					Direction direction = robot.getLocation().directionTo(nearestBuddy.location);
+	    					if(robot.canMove(direction))
+	    						robot.move(direction);
+	    					else if(robot.canMove(direction.rotateLeft()))
+	    						robot.move(direction.rotateLeft());
+	    					else if(robot.canMove(direction.rotateRight()))
+							robot.move(direction.rotateRight());
+	    					else if(robot.canMove(direction.rotateRight().rotateRight()))
+	    						robot.move(direction.rotateRight().rotateRight());
+	    					else if(robot.canMove(direction.rotateLeft().rotateLeft()))
+	    						robot.move(direction.rotateLeft().rotateLeft());
+	    				}
+    				}	
+    			}
+    		} catch(Exception e) {};
     	}
     }
     
@@ -213,8 +284,8 @@ public class RobotPlayer {
     	try {
 	    	while (!robot.isCoreReady())
 	    		Clock.yield();
-	    	if (!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
-				!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
+	    	if (!robot.canMove(Direction.NORTH) && !robot.canMove(Direction.EAST) && 
+				!robot.canMove(Direction.SOUTH) && !robot.canMove(Direction.WEST)) {
 	    		robot.pack();
 	    		ttm();
 	    	}
