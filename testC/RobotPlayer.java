@@ -96,7 +96,7 @@ public class RobotPlayer {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    	    	for (Direction direction : evenDir) {
-	    	    		if (count%4 != 0) {
+	    	    		if (count%6 != 0) {
 		    		    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
 		    		    		Clock.yield();
 		    		    	if (robot.canBuild(direction, RobotType.TURRET))
@@ -221,17 +221,16 @@ public class RobotPlayer {
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
+					RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+					for (int i = 0; i < robots.length; i++)
+						if (robots[i].team != robot.getTeam())
+							robot.attackLocation(robots[i].location);
+					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
 	    				if (s.getMessage()[0] != 2019 && robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1])))
 	    					robot.attackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]));
 	    			}
-	    			
-					RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
-					for (int i = 0; i < robots.length; i++)
-						if (robots[i].team != robot.getTeam())
-							robot.attackLocation(robots[i].location);
-					Clock.yield();
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
