@@ -81,10 +81,13 @@ public class RobotPlayer {
         				robot.move(dir.rotateLeft());
         			else if (robot.canMove(dir.rotateRight()))
         				robot.move(dir.rotateRight());
-        			else if (robot.canMove(dir.rotateLeft().rotateLeft()))
-        				robot.move(dir.rotateLeft().rotateLeft());
-        			else if (robot.canMove(dir.rotateRight().rotateRight()))
-        				robot.move(dir.rotateRight().rotateRight());
+        			else{
+        				robot.clearRubble(dir);
+        			}
+        			//else if (robot.canMove(dir.rotateLeft().rotateLeft()))
+        				//robot.move(dir.rotateLeft().rotateLeft());
+        			//else if (robot.canMove(dir.rotateRight().rotateRight()))
+        				//robot.move(dir.rotateRight().rotateRight());
         		}catch(Exception e) {e.printStackTrace();}
             	while (!robot.isCoreReady())
             		Clock.yield();
@@ -221,10 +224,13 @@ public class RobotPlayer {
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-					RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
-					for (int i = 0; i < robots.length; i++)
-						if (robots[i].team != robot.getTeam())
-							robot.attackLocation(robots[i].location);
+                    RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+                    for (int i = 0; i < robots.length; i++)
+                        if(robots[i].type == RobotType.BIGZOMBIE)
+                            robot.attackLocation(robots[i].location);
+                    for (int i = 0; i < robots.length; i++)
+                        if (robots[i].team != robot.getTeam())
+                            robot.attackLocation(robots[i].location);
 					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
