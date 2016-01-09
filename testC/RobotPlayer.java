@@ -16,6 +16,7 @@ public class RobotPlayer {
 	static RobotController robot;
 	static Direction[] evenDir = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 	static Direction[] oddDir = {Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST};
+    static int allIsWrong = 0;
     
     public static void run(RobotController rc) throws Exception {
         robot = rc;
@@ -95,9 +96,8 @@ public class RobotPlayer {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    	    	for (Direction direction : evenDir) {
-		    	    	//if is being attacked, escape (DOESNT WORK!!!) 
-		    	    	/*while (!robot.isCoreReady())
-		    	    		Clock.yield();
+		    	    	
+	    	    		//if is being attacked, escape (DOESNT WORK!!!) 
 		    	    	double health = robot.getHealth();
 		    	    	if(health < 500){
 			    			//while(robot.senseNearbyRobots(9, Team.ZOMBIE).length > 2)
@@ -105,7 +105,7 @@ public class RobotPlayer {
 			    				escape();
 			    			}
 			    		}
-			    		if(health < 200){
+			    		/*if(health < 200){
 			    			while(robot.senseNearbyRobots(5, Team.ZOMBIE).length > 0)
 			    				escape();
 			    			if(robot.canBuild(Direction.NORTH, RobotType.SCOUT))
@@ -135,6 +135,7 @@ public class RobotPlayer {
 	    		}
 	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
+	    	
 		}
     }
     
@@ -148,6 +149,71 @@ public class RobotPlayer {
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
+	    	
+	    	if(allIsWrong == 1){
+	    		for (int _ = 0; _ < 15; _++) {
+	    	    	try {
+	    	    		if (robot.isCoreReady()) {
+	    	    			RobotInfo target = robot.senseHostileRobots(robot.getLocation(), robot.getType().attackRadiusSquared)[0];
+	    	    			robot.attackLocation(target.location);
+	    	    		}
+	    	    	} catch (Exception e) {}
+	        	}
+	        	int sensorRange = robot.getType().sensorRadiusSquared;    	
+	        	Direction prev_dir = Direction.NORTH;
+	        	
+	    		while (true) {
+	    	    	try {
+	        			// score each direction
+	        			double[] score = new double[8];
+	        			
+	        			// compute hostiles
+	        			MapLocation myLocation = robot.getLocation();
+	        			RobotInfo[] hostiles = robot.senseHostileRobots(myLocation, sensorRange);
+	        			for (RobotInfo hostile : hostiles)
+	        				score[d2i(myLocation.directionTo(hostile.location))] += 3.0 / myLocation.distanceSquaredTo(hostile.location);
+	        			
+	        			// compute walls/rubble
+	        			for (int i = 0; i < 8; i++) {
+	        				if (!robot.onTheMap(myLocation.add(i2d(i))))
+	        					score[i] += 2.0;
+	        				else if (robot.senseRubble(myLocation.add(i2d(i))) > 0.5)
+	        					score[i] += 2.0;
+	        				if (!robot.onTheMap(myLocation.add(i2d(i)).add(i2d(i))))
+	        					score[i] += 0.5;
+	        				else if (robot.senseRubble(myLocation.add(i2d(i)).add(i2d(i))) > 0.5)
+	        					score[i] += 0.5;
+	        			}
+	        			
+	        			// find best direction
+	        			int best_i = 0;
+	        			double best = 999;
+	        			for (int i = 0; i < 8; i++) {
+	        				double current = 0.8 * score[i] + 0.1 * score[(i-1+8)%8] + 0.1 * score[(i+1)%8];
+	        				if (current < best) {
+	        					best_i = i;
+	        					best = current;
+	        				} else if (current == best && random.nextDouble() < 0.5) {
+	        					best_i = i;
+	        					best = current;
+	        				}
+	        			}
+	        			
+	        			// direction bias
+	    				if (score[d2i(prev_dir)] <= best) {
+	    					best_i = d2i(prev_dir);
+	    					best = score[d2i(prev_dir)];
+	    				}
+	        			
+	    				// move
+	        			if (robot.canMove(i2d(best_i)))
+	        				robot.move(i2d(best_i));
+	        			prev_dir = i2d(best_i);
+	        			Clock.yield();
+	    	    	} catch (Exception e) {}
+	    	    	Clock.yield();
+	    		}
+	    	}
 		}
     }
     
@@ -331,42 +397,141 @@ public class RobotPlayer {
 		}
     }
 
+    static int d2i(Direction d) {
+    	if (d == Direction.NORTH)
+    		return 0;
+    	if (d == Direction.NORTH_EAST)
+    		return 1;
+    	if (d == Direction.EAST)
+    		return 2;
+    	if (d == Direction.SOUTH_EAST)
+    		return 3;
+    	if (d == Direction.SOUTH)
+    		return 4;
+    	if (d == Direction.SOUTH_WEST)
+    		return 5;
+    	if (d == Direction.WEST)
+    		return 6;
+    	if (d == Direction.NORTH_WEST)
+    		return 7;
+    	return -1;
+    }
+    
+    static Direction i2d(int i) {
+    	if (i == 0)
+    		return Direction.NORTH;
+    	if (i == 1)
+    		return Direction.NORTH_EAST;
+    	if (i == 2)
+    		return Direction.EAST;
+    	if (i == 3)
+    		return Direction.SOUTH_EAST;
+    	if (i == 4)
+    		return Direction.SOUTH;
+    	if (i == 5)
+    		return Direction.SOUTH_WEST;
+    	if (i == 6)
+    		return Direction.WEST;
+    	if (i == 7)
+    		return Direction.NORTH_WEST;
+    	return Direction.NONE;
+    }
+
     static void escape(){
-    	System.out.println("Escape?");
-    	try {
-			float min = 1000;
-    		int sightRange = 35;
-    		RobotInfo nearestEnemy = null;
-    		RobotInfo[] enemies = robot.senseNearbyRobots(sightRange, Team.ZOMBIE);
-    		for(RobotInfo enemy : enemies){
-    			float distance = robot.getLocation().distanceSquaredTo(enemy.location);
-				if(distance < min){
-					min = distance;
-					nearestEnemy = enemy;
-				}
-		    	while (!robot.isCoreReady())
-		    		Clock.yield();
-				Direction dir = nearestEnemy.location.directionTo(robot.getLocation());
-				if(robot.canMove(dir))
-					robot.move(dir);
-				else if(robot.canMove(dir.rotateLeft()))
-					robot.move(dir.rotateLeft());
-				else if(robot.canMove(dir.rotateRight()))
-					robot.move(dir.rotateRight());
-				else if(robot.canMove(dir.rotateLeft().rotateLeft()))
-					robot.move(dir.rotateLeft().rotateLeft());
-				else if(robot.canMove(dir.rotateRight().rotateRight()))
-					robot.move(dir);
-				else if(robot.canMove(dir.rotateRight().rotateRight().rotateRight()))
-					robot.move(dir);
-				else if(robot.canMove(dir.rotateLeft().rotateLeft().rotateLeft()))
-					robot.move(dir);
-				else{
-					if(robot.canBuild(dir.rotateLeft().rotateLeft().rotateLeft().rotateLeft(), RobotType.GUARD))
-						robot.build(dir.rotateLeft().rotateLeft().rotateLeft().rotateLeft(), RobotType.GUARD);
-				}
-    		}
-    		
-    	} catch (Exception e) {e.printStackTrace();}
+    	
+    	//if everything goes wrong
+    	allIsWrong = 1;
+    	int decoy = 0;
+    	int sensorRange = robot.getType().sensorRadiusSquared;
+    	Direction prev_dir = i2d(random.nextInt(8));
+    	
+		while (true) {
+	    	try {
+	    		if (robot.isCoreReady()) {
+	    			// score each direction
+	    			double[] score = new double[8];
+	    			
+	    			// compute hostiles
+	    			int hostiles = 0;
+	    			MapLocation myLocation = robot.getLocation();
+	    			RobotInfo[] bots = robot.senseNearbyRobots(sensorRange);
+	    			RobotInfo[] nearZombies = robot.senseNearbyRobots(9, Team.ZOMBIE);
+	    			int fastZombies = 0;
+	    			for(RobotInfo isFastZombie : nearZombies)
+	    				if(isFastZombie.type == RobotType.FASTZOMBIE)
+	    					fastZombies++;
+	    			
+		    		if(bots.length > 0){	
+	    				for (RobotInfo bot : bots) {
+		    				double current = 0.0;
+		    				if (bot.team == robot.getTeam().opponent()) {
+		    					++hostiles;
+		    					current = 3.1 / myLocation.distanceSquaredTo(bot.location);
+		    				}
+		    				if (bot.team == Team.ZOMBIE) {
+		    					++hostiles;
+		    					current = 3.0 / myLocation.distanceSquaredTo(bot.location);
+		    				}
+		    				if (bot.team == robot.getTeam())
+		    					current = 2.09 / myLocation.distanceSquaredTo(bot.location);
+		    				if (bot.type == RobotType.FASTZOMBIE)
+		    					++hostiles;
+		    				score[d2i(myLocation.directionTo(bot.location))] += current;
+		    			}
+		    			
+		    			if (fastZombies > 0 && decoy == 0 && hostiles < 10) {
+			    			// many hostiles
+		    				Direction dir = i2d(random.nextInt(8));
+		    				if (robot.canBuild(dir, RobotType.SOLDIER)) {
+			    				decoy = 10;
+		    					robot.build(dir, RobotType.SOLDIER);
+		    				}
+		    			}else if (decoy > 0)
+		    				decoy--;
+		    			if (hostiles == 0 && Math.random() < 0.8)
+		    				continue;
+		    			
+		    			// compute walls/rubble
+		    			for (int i = 0; i < 8; i++) {
+		    				if (!robot.onTheMap(myLocation.add(i2d(i))))
+		    					score[i] += 2.0;
+		    				else if (robot.senseRubble(myLocation.add(i2d(i))) > 0.5)
+		    					score[i] += 2.0;
+		    				if (!robot.onTheMap(myLocation.add(i2d(i)).add(i2d(i))))
+		    					score[i] += 0.5;
+		    				else if (robot.senseRubble(myLocation.add(i2d(i)).add(i2d(i))) > 0.5)
+		    					score[i] += 0.5;
+		    			}
+		    			
+		    			// find best direction
+		    			int best_i = 0;
+		    			double best = 999;
+		    			for (int i = 0; i < 8; i++) {
+		    				double current = 0.8 * score[i] + 0.1 * score[(i-1+8)%8] + 0.1 * score[(i+1)%8];
+		    				if (current < best) {
+		    					best_i = i;
+		    					best = current;
+		    				} else if (current == best && random.nextDouble() < 0.5) {
+		    					best_i = i;
+		    					best = current;
+		    				}
+		    			}
+		    			
+		    			// direction bias
+	    				if (score[d2i(prev_dir)] <= best) {
+	    					best_i = d2i(prev_dir);
+	    					best = score[d2i(prev_dir)];
+	    				}
+		    			
+	    				// move
+		    			if (robot.canMove(i2d(best_i)))
+		    				robot.move(i2d(best_i));
+		    			prev_dir = i2d(best_i);
+	    			}
+	    		}
+	    	} catch (Exception e) {}
+	    	Clock.yield();
+		}
+    	
     }
 }
