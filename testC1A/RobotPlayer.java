@@ -5,13 +5,14 @@ import battlecode.common.*;
 import java.util.*;
 
 /**
- * C1 for CIA. Builds checker-board of turrets to hide behind and sends scouts 
- * to patrol the "final" frontiers. If the turrets fail, the archons run and 
- * play hide-and-seek.
+ * The C1A. Builds checker-board of turrets to hide behind and sends scouts 
+ * to patrol the "final" frontiers. Sends paramilitary operators to target 
+ * and destroy hard-to-kill targets such as big zombies. If the turrets die, 
+ * run around and play hide-and-seek.
  */
 public class RobotPlayer {
-	final static int A2A_MESSAGE = 0;
-	final static int S2T_MESSAGE = 1;
+	static int A2A_MESSAGE = 0;
+	static int S2S_MESSAGE = 1;
 	
 	static Random random;
 	static RobotController robot;
@@ -347,7 +348,7 @@ public class RobotPlayer {
     		} catch(Exception e) {};
     	}
     }
-    
+
     /**
      * Move diagonally (odd directions) until you reach and edge; then displace 
      * in a even direction to fit into the checker-board pattern.
@@ -429,8 +430,32 @@ public class RobotPlayer {
 		}
     }
     
-    /*** NOT USED. ***/
-    static void guard() {
+    /* TOP SECRET. UNAUTHORIZED ACCESS WILL RESULT IN ANGRY GLARES. */
+    
+    /**
+     * Conduct secret paramilitary operations.
+     */
+    static void scout_secret() {
+    	// initialize
+    	// send message to create soldiers
+    	// wait for soldiers
+    	// tell soldiers to follow
+    	// seek out and destroy
+    	
+		while (true) {
+	    	try {
+	    		if (robot.isCoreReady()) {
+	    			// loop
+	    		}
+	    	} catch (Exception e) {}
+	    	Clock.yield();
+		}
+    }
+    
+    /**
+     * Paramilitary operators. Follows scouts and attacks enemy.
+     */
+    static void soldier() {
     	// initialize
     	
 		while (true) {
@@ -444,7 +469,7 @@ public class RobotPlayer {
     }
     
     /*** NOT USED. ***/
-    static void soldier() {
+    static void guard() {
     	// initialize
     	
 		while (true) {

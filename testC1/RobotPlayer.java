@@ -405,7 +405,8 @@ public class RobotPlayer {
 	    		ttm();
 	    	}
     	}catch(Exception e) {}
-	    	
+	    
+    	Team me = robot.getTeam();
     	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
@@ -420,7 +421,18 @@ public class RobotPlayer {
 					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
-	    				if (s.getMessage()[0] != 2019 && robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1])))
+	    				MapLocation l = s.getLocation();
+	    				if (
+	    						(
+	    							s.getTeam() == me && 
+	    							s.getMessage()[0] != A2A_MESSAGE && 
+	    							robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]))
+	    						) ||
+	    						(
+	    							s.getTeam() != me && 
+	    							robot.canAttackLocation(new MapLocation(l.x, l.y))
+	    						)
+	    					)
 	    					robot.attackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]));
 	    			}
 	    		}
