@@ -123,13 +123,11 @@ public class RobotPlayer {
     				if (robot.getHealth() < ESCAPE_HEALTH)
     					archon_escape();
     				
-    				//heals
-    				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(20, robot.getTeam());
-    				for(RobotInfo toHeal : friendsIn2){
-    					if(toHeal.health < 99)
-    						while(toHeal.health < 99)
-    							robot.repair(toHeal.location);
-    				}
+    				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+    				for(RobotInfo toHeal : friendsIn2)
+						if(toHeal.health < 99){
+							robot.repair(toHeal.location);
+						}
     				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
 	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
@@ -319,24 +317,6 @@ public class RobotPlayer {
     		while (!robot.isCoreReady())
     			Clock.yield();
     		
-    		if(healing == 0 && robot.getHealth() < 99){
-	    		healing = 100;
-	    		int sightRange = 53;
-	    		RobotInfo[] friends = robot.senseNearbyRobots(sightRange, robot.getTeam());
-				Direction dir = null;
-	    		for(RobotInfo isArchon : friends){
-					if(isArchon.type == RobotType.ARCHON){
-						dir = robot.getLocation().directionTo(isArchon.location);
-	    				while( robot.getLocation().distanceSquaredTo(isArchon.location) > 2 ){;
-		    				walk(dir);
-		    				dir = robot.getLocation().directionTo(isArchon.location);
-	    				}
-	    				healing = 0;
-						break;
-					}
-	    		}
-	    	}
-    		
     		// exit checker-board
     		while(!robot.canMove(Direction.NORTH) && !robot.canMove(Direction.EAST) && 
 					!robot.canMove(Direction.SOUTH) && !robot.canMove(Direction.WEST)) {
@@ -385,26 +365,6 @@ public class RobotPlayer {
     	int sightRange = 24;
     	while (!robot.isCoreReady())
     		Clock.yield();
-    	
-    	//if ttm is dying, go be healed
-    	try{
-	    	if(healing == 1 && robot.getHealth() < 50){
-	    		healing = 100;
-	    		RobotInfo[] friends = robot.senseNearbyRobots(sightRange, robot.getTeam());
-				Direction dir = null;
-	    		for(RobotInfo isArchon : friends){
-					if(isArchon.type == RobotType.ARCHON){
-						dir = robot.getLocation().directionTo(isArchon.location);
-	    				while( robot.getLocation().distanceSquaredTo(isArchon.location) > 2 ){;
-		    				walk(dir);
-		    				dir = robot.getLocation().directionTo(isArchon.location);
-	    				}
-	    				healing = 0;
-						break;
-					}
-	    		}
-	    	}
-    	} catch(Exception e) {}
     	
     	if (!robot.canMove(Direction.NORTH) || !robot.canMove(Direction.EAST) || 
 				!robot.canMove(Direction.SOUTH) || !robot.canMove(Direction.WEST)) {
@@ -481,12 +441,6 @@ public class RobotPlayer {
                             robot.attackLocation(robots[i].location);
                     for (int i = 0; i < robots.length; i++)
                            robot.attackLocation(robots[i].location);
-                    
-	    			//goes to be healed if life is low
-	    			if(robot.getHealth() < 50 && robots.length < 2 && healing == 0){
-	    				healing++;
-	    				robot.pack();
-	    			}
 					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
