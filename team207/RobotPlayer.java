@@ -17,6 +17,7 @@ public class RobotPlayer {
 	static RobotController robot;
 	static Direction[] evenDir = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 	static Direction[] oddDir = {Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST};
+	static int healing = 0;
     
 	/**
 	 * Initializes static variables and switches between different modes of 
@@ -110,7 +111,7 @@ public class RobotPlayer {
     	}
     	
     	{ /* Loop. */
-    		int TURRET_SCOUT = 6;
+    		int TURRET_SCOUT = 8;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -121,12 +122,25 @@ public class RobotPlayer {
     			try {
     				if (robot.getHealth() < ESCAPE_HEALTH)
     					archon_escape();
+    				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+    				for(RobotInfo toHeal : friendsIn2)
+						if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+							robot.repair(toHeal.location);
+							Clock.yield();
+						}
+    				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
 	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
 		    	    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET)) {
 		    	    	    		Clock.yield();
 		    	    				if (robot.getHealth() < ESCAPE_HEALTH)
 		    	    					archon_escape();
+		    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+		    	    				for(RobotInfo toHeal : friendsIn2)
+		    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+		    								robot.repair(toHeal.location);
+		    								Clock.yield();
+		    							}
 		    	    	    	}
 		    	    	    	if (robot.canBuild(dir, RobotType.TURRET))
 		    	    	    		robot.build(dir, RobotType.TURRET);
@@ -137,6 +151,12 @@ public class RobotPlayer {
 	    	    	    		Clock.yield();
 	    	    				if (robot.getHealth() < ESCAPE_HEALTH)
 	    	    					archon_escape();
+	    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+	    	    				for(RobotInfo toHeal : friendsIn2)
+	    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+	    								robot.repair(toHeal.location);
+	    								Clock.yield();
+	    							}
 	    	    	    	}
 	    	    	    	if (robot.canBuild(dir, RobotType.SCOUT))
 	    	    	    		robot.build(dir, RobotType.SCOUT);
@@ -196,9 +216,9 @@ public class RobotPlayer {
 		    			if (fastZombies > 0 && decoy == 0 && hostiles < 10) {
 			    			// many hostiles
 		    				Direction dir = i2d(random.nextInt(8));
-		    				if (robot.canBuild(dir, RobotType.SOLDIER)) {
+		    				if (robot.canBuild(dir, RobotType.GUARD)) {
 			    				decoy = 10;
-		    					robot.build(dir, RobotType.SOLDIER);
+		    					robot.build(dir, RobotType.GUARD);
 		    				}
 		    			}else if (decoy > 0)
 		    				decoy--;
@@ -323,9 +343,12 @@ public class RobotPlayer {
     		}
 	    	
     		// sense enemies
+    		int i = 0;
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)
 	    		try {
+	    			if (i++ > 19)
+	    				break;
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {e.printStackTrace();};
     		
@@ -354,6 +377,7 @@ public class RobotPlayer {
      */
     static void ttm() {
     	// initialize
+    	int sightRange = 24;
     	while (!robot.isCoreReady())
     		Clock.yield();
     	
@@ -391,6 +415,21 @@ public class RobotPlayer {
 		return;
     }
     
+    static void walk(Direction dir){
+    	try{
+    		if (robot.canMove(dir))
+    			robot.move(dir);
+    		else if (robot.canMove(dir.rotateLeft()))
+    			robot.move(dir.rotateLeft());
+    		else if (robot.canMove(dir.rotateRight()))
+    			robot.move(dir.rotateRight());
+    		else if (robot.canMove(dir.rotateRight().rotateRight()))
+    			robot.move(dir.rotateRight().rotateRight());
+    		else if (robot.canMove(dir.rotateLeft().rotateLeft()))
+    			robot.move(dir.rotateLeft().rotateLeft());
+    	} catch(Exception e) {}
+    }
+    
     /**
      * Pack and attack. It rhymes!
      */
@@ -405,22 +444,33 @@ public class RobotPlayer {
 	    		ttm();
 	    	}
     	}catch(Exception e) {}
-	    	
+	    
+    	Team me = robot.getTeam();
     	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
-	    		if (robot.isCoreReady()) {
-                    RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+	    		if (robot.isCoreReady()) {	    			
+                    RobotInfo[] robots = robot.senseHostileRobots(robot.getLocation(), attackRange);
                     for (int i = 0; i < robots.length; i++)
                         if(robots[i].type == RobotType.BIGZOMBIE)
                             robot.attackLocation(robots[i].location);
                     for (int i = 0; i < robots.length; i++)
-                        if (robots[i].team != robot.getTeam())
-                            robot.attackLocation(robots[i].location);
+                           robot.attackLocation(robots[i].location);
 					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
-	    				if (s.getMessage()[0] != 2019 && robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1])))
+	    				MapLocation l = s.getLocation();
+	    				if (
+	    						(
+	    							s.getTeam() == me && 
+	    							s.getMessage()[0] != A2A_MESSAGE && 
+	    							robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]))
+	    						) ||
+	    						(
+	    							s.getTeam() != me && 
+	    							robot.canAttackLocation(new MapLocation(l.x, l.y))
+	    						)
+	    					)
 	    					robot.attackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]));
 	    			}
 	    		}

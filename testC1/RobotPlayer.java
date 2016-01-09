@@ -111,7 +111,7 @@ public class RobotPlayer {
     	}
     	
     	{ /* Loop. */
-    		int TURRET_SCOUT = 6;
+    		int TURRET_SCOUT = 8;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -122,11 +122,11 @@ public class RobotPlayer {
     			try {
     				if (robot.getHealth() < ESCAPE_HEALTH)
     					archon_escape();
-    				
     				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
     				for(RobotInfo toHeal : friendsIn2)
-						if(toHeal.health < 99){
+						if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
 							robot.repair(toHeal.location);
+							Clock.yield();
 						}
     				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
@@ -135,6 +135,12 @@ public class RobotPlayer {
 		    	    	    		Clock.yield();
 		    	    				if (robot.getHealth() < ESCAPE_HEALTH)
 		    	    					archon_escape();
+		    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+		    	    				for(RobotInfo toHeal : friendsIn2)
+		    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+		    								robot.repair(toHeal.location);
+		    								Clock.yield();
+		    							}
 		    	    	    	}
 		    	    	    	if (robot.canBuild(dir, RobotType.TURRET))
 		    	    	    		robot.build(dir, RobotType.TURRET);
@@ -145,6 +151,12 @@ public class RobotPlayer {
 	    	    	    		Clock.yield();
 	    	    				if (robot.getHealth() < ESCAPE_HEALTH)
 	    	    					archon_escape();
+	    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+	    	    				for(RobotInfo toHeal : friendsIn2)
+	    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+	    								robot.repair(toHeal.location);
+	    								Clock.yield();
+	    							}
 	    	    	    	}
 	    	    	    	if (robot.canBuild(dir, RobotType.SCOUT))
 	    	    	    		robot.build(dir, RobotType.SCOUT);
@@ -331,9 +343,12 @@ public class RobotPlayer {
     		}
 	    	
     		// sense enemies
+    		int i = 0;
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)
 	    		try {
+	    			if (i++ > 19)
+	    				break;
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {e.printStackTrace();};
     		
