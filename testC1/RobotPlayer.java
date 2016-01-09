@@ -124,10 +124,11 @@ public class RobotPlayer {
     					archon_escape();
     				
     				//heals
-    				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(2, robot.getTeam());
+    				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(20, robot.getTeam());
     				for(RobotInfo toHeal : friendsIn2){
-    					if(toHeal.health < 50)
-    						robot.repair(toHeal.location);
+    					if(toHeal.health < 99)
+    						while(toHeal.health < 99)
+    							robot.repair(toHeal.location);
     				}
     				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
@@ -318,7 +319,7 @@ public class RobotPlayer {
     		while (!robot.isCoreReady())
     			Clock.yield();
     		
-    		if(healing == 1 && robot.getHealth() < 50){
+    		if(healing == 0 && robot.getHealth() < 99){
 	    		healing = 100;
 	    		int sightRange = 53;
 	    		RobotInfo[] friends = robot.senseNearbyRobots(sightRange, robot.getTeam());
