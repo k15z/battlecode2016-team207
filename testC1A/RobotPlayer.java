@@ -6,9 +6,9 @@ import java.util.*;
 
 /**
  * The C1A. Builds checker-board of turrets to hide behind and sends scouts 
- * to patrol the "final" frontiers. Sends paramilitary operators to target 
- * and destroy hard-to-kill targets such as big zombies. If the turrets die, 
- * run around and play hide-and-seek.
+ * to patrol the "final" frontiers. Sends paramilitary operators to act as  
+ * decoys to trick hard-to-kill targets such as big zombies. If the turrets 
+ * die, run around and play hide-and-seek.
  */
 public class RobotPlayer {
 	static int A2A_MESSAGE = 0;
@@ -84,6 +84,22 @@ public class RobotPlayer {
 	        		int MAX_ATTEMPTS = 50;
 	        		MapLocation src = robot.getLocation();
 	        		MapLocation dest = signal.getLocation();
+	        		
+	        		// secret ops
+	        		if (robot.hasBuildRequirements(RobotType.SCOUT)){
+	        			Direction dir = src.directionTo(dest).rotateLeft().rotateLeft();
+	                	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
+	                		Clock.yield();
+	                	if (robot.canBuild(dir, RobotType.SCOUT))
+	                		robot.build(dir, RobotType.SCOUT);
+	                	dir = dir.rotateLeft();
+	                	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SOLDIER))
+	                		Clock.yield();
+	                	if (robot.canBuild(dir, RobotType.SOLDIER))
+	                		robot.build(dir, RobotType.SOLDIER);
+	        		}
+	        		
+                	// travel to archons
 	            	while (src.distanceSquaredTo(dest) > 9 && attempts++ < MAX_ATTEMPTS) {
 	                	while (!robot.isCoreReady())
 	                		Clock.yield();
@@ -305,6 +321,15 @@ public class RobotPlayer {
     	while (!robot.isCoreReady())
     		Clock.yield();
     	
+    	{
+    		RobotInfo[] rs = robot.senseNearbyRobots(2);
+    		for (RobotInfo r : rs)
+	    		if (r.type == RobotType.SOLDIER) {
+	    			scout_secret();
+	    			return;
+	    		}
+    	}
+    	
     	while (true) {
     		Clock.yield();
     		while (!robot.isCoreReady())
@@ -406,7 +431,8 @@ public class RobotPlayer {
 	    		ttm();
 	    	}
     	}catch(Exception e) {}
-	    	
+	    
+    	Team myTeam = robot.getTeam();
     	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
@@ -421,7 +447,18 @@ public class RobotPlayer {
 					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
-	    				if (s.getMessage()[0] != 2019 && robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1])))
+	                    MapLocation l = s.getLocation();
+	    				if (
+	    						( // my team
+	    							s.getTeam() == myTeam && 
+	    							s.getMessage()[0] != A2A_MESSAGE && 
+	    							robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]))
+	    						) ||
+	    						( // intercepted enemy
+	    							s.getTeam() != myTeam && 
+	    							robot.canAttackLocation(new MapLocation(l.x, l.y))
+	    						)
+	    					)
 	    					robot.attackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]));
 	    			}
 	    		}
