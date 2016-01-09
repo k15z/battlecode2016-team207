@@ -337,7 +337,7 @@ public class RobotPlayer {
     					Direction dir = oddDir[random.nextInt(4)];
     					if(robot.canMove(dir)) {
     						robot.move(dir);
-    						int count = 0;
+    						int count = 1;
     						while (!robot.canMove(dir.opposite()) || count++ < 2)
     							Clock.yield();
     						robot.move(dir.opposite());
