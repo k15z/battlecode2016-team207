@@ -125,7 +125,10 @@ public class RobotPlayer {
     				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
     				for(RobotInfo toHeal : friendsIn2)
 						if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+							try {
 							robot.repair(toHeal.location);
+							} catch(Exception e) {};
+
 							Clock.yield();
 						}
     				
@@ -138,7 +141,9 @@ public class RobotPlayer {
 		    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
 		    	    				for(RobotInfo toHeal : friendsIn2)
 		    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+		    								try {
 		    								robot.repair(toHeal.location);
+		    								} catch(Exception e) {};
 		    								Clock.yield();
 		    							}
 		    	    	    	}
@@ -154,7 +159,9 @@ public class RobotPlayer {
 	    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
 	    	    				for(RobotInfo toHeal : friendsIn2)
 	    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+	    								try {
 	    								robot.repair(toHeal.location);
+	    								} catch(Exception e) {};
 	    								Clock.yield();
 	    							}
 	    	    	    	}
