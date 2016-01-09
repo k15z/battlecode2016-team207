@@ -318,6 +318,8 @@ public class RobotPlayer {
 		    			dir = oddDir[random.nextInt(4)];
 		    		robot.move(dir);
 	    		} catch(Exception e) {e.printStackTrace();};
+	    		while (!robot.isCoreReady())
+	    			Clock.yield();
     		}
 	    	
     		// sense enemies
