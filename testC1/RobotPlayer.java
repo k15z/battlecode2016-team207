@@ -57,7 +57,7 @@ public class RobotPlayer {
      * The first archon sends out a message, and all other archons come running 
      * towards it. They work together to build a checker-board of turrets and 
      * use scouts to patrol the outer edges. If its health falls too much, the 
-     * archonflees from it's home.
+     * archon flees from it's home.
      */
     static void archon() {
     	{ /* Initialize. */

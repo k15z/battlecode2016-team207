@@ -6,9 +6,8 @@ import java.util.*;
 
 /**
  * The C1A. Builds checker-board of turrets to hide behind and sends scouts 
- * to patrol the "final" frontiers. Sends paramilitary operators to act as  
- * decoys to trick hard-to-kill targets such as big zombies. If the turrets 
- * die, run around and play hide-and-seek.
+ * to patrol the "final" frontiers. Sends kamikaze scouts to lead zombies 
+ * to the enemy team. If the turrets die, run around and play hide-and-seek.
  */
 public class RobotPlayer {
 	static int A2A_MESSAGE = 0;
@@ -87,16 +86,11 @@ public class RobotPlayer {
 	        		
 	        		// secret ops
 	        		if (robot.hasBuildRequirements(RobotType.SCOUT)){
-	        			Direction dir = src.directionTo(dest).rotateLeft().rotateLeft();
+	        			Direction dir = src.directionTo(dest).opposite();
 	                	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT))
 	                		Clock.yield();
 	                	if (robot.canBuild(dir, RobotType.SCOUT))
 	                		robot.build(dir, RobotType.SCOUT);
-	                	dir = dir.rotateLeft();
-	                	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SOLDIER))
-	                		Clock.yield();
-	                	if (robot.canBuild(dir, RobotType.SOLDIER))
-	                		robot.build(dir, RobotType.SOLDIER);
 	        		}
 	        		
                 	// travel to archons
@@ -138,12 +132,25 @@ public class RobotPlayer {
     			try {
     				if (robot.getHealth() < ESCAPE_HEALTH)
     					archon_escape();
+    				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+    				for(RobotInfo toHeal : friendsIn2)
+						if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+							robot.repair(toHeal.location);
+							Clock.yield();
+						}
+    				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
 	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
 		    	    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET)) {
 		    	    	    		Clock.yield();
 		    	    				if (robot.getHealth() < ESCAPE_HEALTH)
 		    	    					archon_escape();
+		    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+		    	    				for(RobotInfo toHeal : friendsIn2)
+		    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+		    								robot.repair(toHeal.location);
+		    								Clock.yield();
+		    							}
 		    	    	    	}
 		    	    	    	if (robot.canBuild(dir, RobotType.TURRET))
 		    	    	    		robot.build(dir, RobotType.TURRET);
@@ -154,6 +161,12 @@ public class RobotPlayer {
 	    	    	    		Clock.yield();
 	    	    				if (robot.getHealth() < ESCAPE_HEALTH)
 	    	    					archon_escape();
+	    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+	    	    				for(RobotInfo toHeal : friendsIn2)
+	    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+	    								robot.repair(toHeal.location);
+	    								Clock.yield();
+	    							}
 	    	    	    	}
 	    	    	    	if (robot.canBuild(dir, RobotType.SCOUT))
 	    	    	    		robot.build(dir, RobotType.SCOUT);
@@ -322,12 +335,12 @@ public class RobotPlayer {
     		Clock.yield();
     	
     	{
+    		boolean notsecret = false;
     		RobotInfo[] rs = robot.senseNearbyRobots(2);
     		for (RobotInfo r : rs)
-	    		if (r.type == RobotType.SOLDIER) {
-	    			scout_secret();
-	    			return;
-	    		}
+    			notsecret &= (r.type == RobotType.TURRET);
+    		if (!notsecret)
+    			scout_secret();
     	}
     	
     	while (true) {
@@ -470,14 +483,10 @@ public class RobotPlayer {
     /* TOP SECRET. UNAUTHORIZED ACCESS WILL RESULT IN ANGRY GLARES. */
     
     /**
-     * Conduct secret paramilitary operations.
+     * Kamikaze.
      */
     static void scout_secret() {
     	// initialize
-    	// send message to create soldiers
-    	// wait for soldiers
-    	// tell soldiers to follow
-    	// seek out and destroy
     	
 		while (true) {
 	    	try {
@@ -489,9 +498,6 @@ public class RobotPlayer {
 		}
     }
     
-    /**
-     * Paramilitary operators. Follows scouts and attacks enemy.
-     */
     static void soldier() {
     	// initialize
     	
