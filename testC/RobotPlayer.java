@@ -91,28 +91,31 @@ public class RobotPlayer {
         	}
     	}
     	
-		int count = 0;
+		int count = 1;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    	    	for (Direction direction : evenDir) {
-		    	    	
-	    	    		//if is being attacked, escape (DOESNT WORK!!!) 
+		    	    
+	    	    		int numberEnemies = robot.senseHostileRobots(robot.getLocation(), 35).length;
 		    	    	double health = robot.getHealth();
-		    	    	if(health < 500){
-			    			//while(robot.senseNearbyRobots(9, Team.ZOMBIE).length > 2)
+		    	    	//if is being attacked, escape
+		    	    	if(health < 500 && numberEnemies > 7){
 			    			while(true){
 			    				escape();
 			    			}
 			    		}
-			    		/*if(health < 200){
-			    			while(robot.senseNearbyRobots(5, Team.ZOMBIE).length > 0)
-			    				escape();
-			    			if(robot.canBuild(Direction.NORTH, RobotType.SCOUT))
-			    				robot.build(Direction.NORTH, RobotType.SCOUT);
-			    		}*/
-			    		
-	    	    		if (count%5 != 0) {
+		    	    	if (count > 0 && count < 8){
+		    	    		while (!robot.isCoreReady())
+		    		    		Clock.yield();
+	    	    			if (robot.hasBuildRequirements(RobotType.SOLDIER)) {
+			    		    	if (robot.canBuild(direction, RobotType.SOLDIER)) {
+			    		    		robot.build(direction, RobotType.SOLDIER);
+				    	    		count++;
+			    		    	}
+	    	    			}
+		    	    	}
+		    	    	else if (count%5 != 0) {
 		    		    	while (!robot.isCoreReady())
 		    		    		Clock.yield();
 	    	    			if (robot.hasBuildRequirements(RobotType.TURRET)) {
@@ -135,7 +138,6 @@ public class RobotPlayer {
 	    		}
 	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
-	    	
 		}
     }
     
@@ -219,15 +221,21 @@ public class RobotPlayer {
     
     static void soldier() {
     	// initialize
-    	
+    	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
-	    			// loop
+                    RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+                    for (int i = 0; i < robots.length; i++)
+                        if(robots[i].type == RobotType.BIGZOMBIE)
+                            robot.attackLocation(robots[i].location);
+                    for (int i = 0; i < robots.length; i++)
+                        if (robots[i].team != robot.getTeam())
+                            robot.attackLocation(robots[i].location);
 	    		}
 	    	} catch (Exception e) {}
 	    	Clock.yield();
-		}
+    	}
     }
     
     static void scout() {
@@ -352,6 +360,7 @@ public class RobotPlayer {
     static void turret() {
     	// initialize
     	try {
+    		//if turret is almost dying, go for help
 	    	while (!robot.isCoreReady())
 	    		Clock.yield();
 	    	if (!robot.canMove(Direction.NORTH) && !robot.canMove(Direction.EAST) && 
