@@ -406,6 +406,7 @@ public class RobotPlayer {
 					System.out.println("Sabatoge time!");
     				scout_secret();
     			}
+    		}
     		catch(Exception e) {}
     	}
     }
