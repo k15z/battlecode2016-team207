@@ -138,9 +138,9 @@ public class RobotPlayer {
 						}
     				
     				try {
-	    				while (schedule.get(0) < robot.getRoundNum())
+	    				while (schedule.size() > 0 && schedule.get(0) < robot.getRoundNum())
 	    					schedule.remove(0);
-	    				if (schedule.get(0) - robot.getRoundNum() < 128) {
+	    				if (schedule.size() > 0 && schedule.get(0) - robot.getRoundNum() < 128) {
 	    					// activate kamikaze
 	    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
 	    					for (RobotInfo ri : near) {

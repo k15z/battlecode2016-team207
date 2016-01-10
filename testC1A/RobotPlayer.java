@@ -290,6 +290,8 @@ public class RobotPlayer {
 	    				}
 		    			
 	    				// move
+	    				if (robot.senseRubble(robot.getLocation().add(i2d(best_i))) > 0)
+	    					robot.clearRubble(i2d(best_i));
 		    			if (robot.canMove(i2d(best_i)))
 		    				robot.move(i2d(best_i));
 		    			prev_dir = i2d(best_i);
