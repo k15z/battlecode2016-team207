@@ -398,6 +398,7 @@ public class RobotPlayer {
     		} catch(Exception e) {};
     		
     		// sabotage?
+    		try {
     		Signal[] signals = robot.emptySignalQueue();
     		for (Signal sig : signals)
     			if (sig.getMessage()[0] == A2S_MESSAGE && sig.getMessage()[1] == robot.getID())
@@ -405,6 +406,7 @@ public class RobotPlayer {
 					System.out.println("Sabatoge time!");
     				scout_secret();
     			}
+    		catch(Exception e) {}
     	}
     }
 
