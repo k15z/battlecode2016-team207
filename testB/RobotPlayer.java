@@ -686,6 +686,25 @@ public class RobotPlayer {
                     for (int i = 0; i < robots.length; i++)
                     	if(robots[i].team != robot.getTeam())
                            robot.attackLocation(robots[i].location);
+                    
+                    
+                    Signal[] signals = robot.emptySignalQueue();
+                    Team myTeam = robot.getTeam();
+	    			for (Signal s : signals) {
+	                    MapLocation l = s.getLocation();
+	    				if (
+	    						( // my team
+	    							s.getTeam() == myTeam && 
+	    							s.getMessage()[0] != A2A_MESSAGE && 
+	    							robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]))
+	    						) ||
+	    						( // intercepted enemy
+	    							s.getTeam() != myTeam && 
+	    							robot.canAttackLocation(new MapLocation(l.x, l.y))
+	    						)
+	    					)
+	    					robot.attackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]));
+	    			}
 	    			
 	    		}
 	    	} catch (Exception e) {}
