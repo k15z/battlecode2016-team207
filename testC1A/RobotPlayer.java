@@ -140,7 +140,7 @@ public class RobotPlayer {
 							Clock.yield();
 						}
     				
-    				if (first)
+    				if (first && schedule.size() > 0)
 	    				try {
 		    				while (schedule.get(0) < robot.getRoundNum())
 		    					schedule.remove(0);
