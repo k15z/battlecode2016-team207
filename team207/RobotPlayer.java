@@ -5,19 +5,18 @@ import battlecode.common.*;
 import java.util.*;
 
 /**
- * C1 for CIA. Builds checker-board of turrets to hide behind and sends scouts 
- * to patrol the "final" frontiers. If the turrets fail, the archons run and 
- * play hide-and-seek.
+ * The C1A. Builds checker-board of turrets to hide behind and sends scouts 
+ * to patrol the "final" frontiers. Sends kamikaze scouts to lead zombies 
+ * to the enemy team. If the turrets die, run around and play hide-and-seek.
  */
 public class RobotPlayer {
-	final static int A2A_MESSAGE = 0;
-	final static int S2T_MESSAGE = 1;
+	static int A2A_MESSAGE = 0;
+	static int A2S_MESSAGE = 1;
 	
 	static Random random;
 	static RobotController robot;
 	static Direction[] evenDir = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 	static Direction[] oddDir = {Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST};
-	static int healing = 0;
     
 	/**
 	 * Initializes static variables and switches between different modes of 
@@ -84,6 +83,8 @@ public class RobotPlayer {
 	        		int MAX_ATTEMPTS = 50;
 	        		MapLocation src = robot.getLocation();
 	        		MapLocation dest = signal.getLocation();
+	        		
+                	// travel to archons
 	            	while (src.distanceSquaredTo(dest) > 9 && attempts++ < MAX_ATTEMPTS) {
 	                	while (!robot.isCoreReady())
 	                		Clock.yield();
@@ -111,7 +112,12 @@ public class RobotPlayer {
     	}
     	
     	{ /* Loop. */
-    		int TURRET_SCOUT = 8;
+    		int[] raw_schedule = robot.getZombieSpawnSchedule().getRounds();
+    		List<Integer> schedule = new LinkedList<Integer>();
+    		for (int rs: raw_schedule)
+    			schedule.add(rs);
+    		
+    		int TURRET_SCOUT = 5;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -125,9 +131,27 @@ public class RobotPlayer {
     				RobotInfo[] friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
     				for(RobotInfo toHeal : friendsIn2)
 						if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+							try {
 							robot.repair(toHeal.location);
+							} catch(Exception e) {};
 							Clock.yield();
 						}
+    				
+    				try {
+	    				while (schedule.get(0) < robot.getRoundNum())
+	    					schedule.remove(0);
+	    				if (schedule.get(0) - robot.getRoundNum() < 128) {
+	    					// activate kamikaze
+	    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
+	    					for (RobotInfo ri : near) {
+	    						if (ri.type == RobotType.SCOUT) {
+		    						robot.broadcastMessageSignal(A2S_MESSAGE, ri.ID, 16);
+		        					schedule.remove(0);
+		        					break;
+	    						}
+	    					}
+	    				}
+    				} catch (Exception e) {e.printStackTrace();}
     				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
 	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
@@ -138,7 +162,9 @@ public class RobotPlayer {
 		    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
 		    	    				for(RobotInfo toHeal : friendsIn2)
 		    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+		    								try {
 		    								robot.repair(toHeal.location);
+		    								} catch(Exception e) {};
 		    								Clock.yield();
 		    							}
 		    	    	    	}
@@ -154,7 +180,9 @@ public class RobotPlayer {
 	    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
 	    	    				for(RobotInfo toHeal : friendsIn2)
 	    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+	    								try {
 	    								robot.repair(toHeal.location);
+	    								} catch(Exception e) {};
 	    								Clock.yield();
 	    							}
 	    	    	    	}
@@ -216,9 +244,9 @@ public class RobotPlayer {
 		    			if (fastZombies > 0 && decoy == 0 && hostiles < 10) {
 			    			// many hostiles
 		    				Direction dir = i2d(random.nextInt(8));
-		    				if (robot.canBuild(dir, RobotType.GUARD)) {
+		    				if (robot.canBuild(dir, RobotType.SOLDIER)) {
 			    				decoy = 10;
-		    					robot.build(dir, RobotType.GUARD);
+		    					robot.build(dir, RobotType.SOLDIER);
 		    				}
 		    			}else if (decoy > 0)
 		    				decoy--;
@@ -266,7 +294,6 @@ public class RobotPlayer {
 	    	} catch (Exception e) {}
 	    	Clock.yield();
 		}
-    	
     }
 
     /**
@@ -343,12 +370,9 @@ public class RobotPlayer {
     		}
 	    	
     		// sense enemies
-    		int i = 0;
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)
 	    		try {
-	    			if (i++ > 19)
-	    				break;
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {e.printStackTrace();};
     		
@@ -360,7 +384,7 @@ public class RobotPlayer {
     					Direction dir = oddDir[random.nextInt(4)];
     					if(robot.canMove(dir)) {
     						robot.move(dir);
-    						int count = 1;
+    						int count = 0;
     						while (!robot.canMove(dir.opposite()) || count++ < 2)
     							Clock.yield();
     						robot.move(dir.opposite());
@@ -368,16 +392,24 @@ public class RobotPlayer {
     				}
     			}
     		} catch(Exception e) {};
+    		
+    		// sabotage?
+    		Signal[] signals = robot.emptySignalQueue();
+    		for (Signal sig : signals)
+    			if (sig.getMessage()[0] == A2S_MESSAGE && sig.getMessage()[1] == robot.getID())
+    			{
+					System.out.println("Sabatoge time!");
+    				scout_secret();
+    			}
     	}
     }
-    
+
     /**
      * Move diagonally (odd directions) until you reach and edge; then displace 
      * in a even direction to fit into the checker-board pattern.
      */
     static void ttm() {
     	// initialize
-    	int sightRange = 24;
     	while (!robot.isCoreReady())
     		Clock.yield();
     	
@@ -415,21 +447,7 @@ public class RobotPlayer {
 		return;
     }
     
-    static void walk(Direction dir){
-    	try{
-    		if (robot.canMove(dir))
-    			robot.move(dir);
-    		else if (robot.canMove(dir.rotateLeft()))
-    			robot.move(dir.rotateLeft());
-    		else if (robot.canMove(dir.rotateRight()))
-    			robot.move(dir.rotateRight());
-    		else if (robot.canMove(dir.rotateRight().rotateRight()))
-    			robot.move(dir.rotateRight().rotateRight());
-    		else if (robot.canMove(dir.rotateLeft().rotateLeft()))
-    			robot.move(dir.rotateLeft().rotateLeft());
-    	} catch(Exception e) {}
-    }
-    
+
     /**
      * Pack and attack. It rhymes!
      */
@@ -445,29 +463,30 @@ public class RobotPlayer {
 	    	}
     	}catch(Exception e) {}
 	    
-    	Team me = robot.getTeam();
+    	Team myTeam = robot.getTeam();
     	int attackRange = robot.getType().attackRadiusSquared;
 		while (true) {
 	    	try {
-	    		if (robot.isCoreReady()) {	    			
-                    RobotInfo[] robots = robot.senseHostileRobots(robot.getLocation(), attackRange);
+	    		if (robot.isCoreReady()) {
+                    RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
                     for (int i = 0; i < robots.length; i++)
                         if(robots[i].type == RobotType.BIGZOMBIE)
                             robot.attackLocation(robots[i].location);
                     for (int i = 0; i < robots.length; i++)
-                           robot.attackLocation(robots[i].location);
+                        if (robots[i].team != robot.getTeam())
+                            robot.attackLocation(robots[i].location);
 					
 	    			Signal[] signals = robot.emptySignalQueue();
 	    			for (Signal s : signals) {
-	    				MapLocation l = s.getLocation();
+	                    MapLocation l = s.getLocation();
 	    				if (
-	    						(
-	    							s.getTeam() == me && 
+	    						( // my team
+	    							s.getTeam() == myTeam && 
 	    							s.getMessage()[0] != A2A_MESSAGE && 
 	    							robot.canAttackLocation(new MapLocation(s.getMessage()[0], s.getMessage()[1]))
 	    						) ||
-	    						(
-	    							s.getTeam() != me && 
+	    						( // intercepted enemy
+	    							s.getTeam() != myTeam && 
 	    							robot.canAttackLocation(new MapLocation(l.x, l.y))
 	    						)
 	    					)
@@ -479,8 +498,107 @@ public class RobotPlayer {
 		}
     }
     
-    /*** NOT USED. ***/
-    static void guard() {
+    /**
+     * Kamikaze.
+     */
+    static void scout_secret() {
+    	//if everything goes wrong
+    	int decoy = 0;
+    	int sensorRange = robot.getType().sensorRadiusSquared;
+    	Direction prev_dir = i2d(random.nextInt(8));
+    	
+		while (true) {
+	    	try {
+	    		if (robot.isCoreReady()) {
+	    			// score each direction
+	    			double[] score = new double[8];
+	    			
+	    			// compute hostiles
+	    			int hostiles = 0;
+	    			MapLocation myLocation = robot.getLocation();
+	    			RobotInfo[] bots = robot.senseNearbyRobots(sensorRange);
+	    			RobotInfo[] nearZombies = robot.senseNearbyRobots(9, Team.ZOMBIE);
+	    			int fastZombies = 0;
+	    			for(RobotInfo isFastZombie : nearZombies)
+	    				if(isFastZombie.type == RobotType.FASTZOMBIE)
+	    					fastZombies++;
+	    			
+		    		if(bots.length > 0){	
+	    				for (RobotInfo bot : bots) {
+		    				double current = 0.0;
+		    				if (bot.team == robot.getTeam().opponent()) {
+		    					++hostiles;
+		    					current = 3.1 / myLocation.distanceSquaredTo(bot.location);
+		    				}
+		    				if (bot.team == Team.ZOMBIE) {
+		    					++hostiles;
+		    					current = 3.0 / myLocation.distanceSquaredTo(bot.location);
+		    				}
+		    				if (bot.team == robot.getTeam())
+		    					current = 9.0 / myLocation.distanceSquaredTo(bot.location);
+		    				if (bot.type == RobotType.FASTZOMBIE)
+		    					++hostiles;
+		    				score[d2i(myLocation.directionTo(bot.location))] += current;
+		    			}
+		    			
+		    			if (fastZombies > 0 && decoy == 0 && hostiles < 10) {
+			    			// many hostiles
+		    				Direction dir = i2d(random.nextInt(8));
+		    				if (robot.canBuild(dir, RobotType.SOLDIER)) {
+			    				decoy = 10;
+		    					robot.build(dir, RobotType.SOLDIER);
+		    				}
+		    			}else if (decoy > 0)
+		    				decoy--;
+		    			if (hostiles == 0 && Math.random() < 0.8)
+		    				continue;
+		    			
+		    			// compute walls/rubble
+		    			for (int i = 0; i < 8; i++) {
+		    				if (!robot.onTheMap(myLocation.add(i2d(i))))
+		    					score[i] += 2.0;
+		    				//else if (robot.senseRubble(myLocation.add(i2d(i))) > 0.5)
+		    				//	score[i] += 2.0;
+		    				if (!robot.onTheMap(myLocation.add(i2d(i)).add(i2d(i))))
+		    					score[i] += 0.5;
+		    				//else if (robot.senseRubble(myLocation.add(i2d(i)).add(i2d(i))) > 0.5)
+		    				//	score[i] += 0.5;
+		    			}
+		    			
+		    			// find best direction
+		    			int best_i = 0;
+		    			double best = 999;
+		    			for (int i = 0; i < 8; i++) {
+		    				double current = 0.8 * score[i] + 0.1 * score[(i-1+8)%8] + 0.1 * score[(i+1)%8];
+		    				if (current < best) {
+		    					best_i = i;
+		    					best = current;
+		    				} else if (current == best && random.nextDouble() < 0.5) {
+		    					best_i = i;
+		    					best = current;
+		    				}
+		    			}
+		    			
+		    			// direction bias
+	    				if (score[d2i(prev_dir)] <= best) {
+	    					best_i = d2i(prev_dir);
+	    					best = score[d2i(prev_dir)];
+	    				}
+		    			
+	    				// move
+		    			if (robot.canMove(i2d(best_i)))
+		    				robot.move(i2d(best_i));
+		    			prev_dir = i2d(best_i);
+	    			}
+		    		if (random.nextDouble() < 0.5)
+		    			Clock.yield();
+	    		}
+	    	} catch (Exception e) {}
+	    	Clock.yield();
+		}
+    }
+    
+    static void soldier() {
     	// initialize
     	
 		while (true) {
@@ -494,7 +612,7 @@ public class RobotPlayer {
     }
     
     /*** NOT USED. ***/
-    static void soldier() {
+    static void guard() {
     	// initialize
     	
 		while (true) {

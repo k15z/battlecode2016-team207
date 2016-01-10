@@ -59,6 +59,8 @@ public class RobotPlayer {
      * archonflees from it's home.
      */
     static void archon() {
+    	boolean first = false;
+    	
     	{ /* Initialize. */
 	    	// Handle initial signals.
 	    	Signal signal = null;
@@ -70,6 +72,7 @@ public class RobotPlayer {
 	    	try {
 	        	if (signal == null) {
 	        		// I'm the first archon!
+	        		first = true;
 					robot.broadcastMessageSignal(A2A_MESSAGE, A2A_MESSAGE, 1000);
 		        	for (Direction direction : oddDir) {
 		    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
@@ -117,7 +120,7 @@ public class RobotPlayer {
     		for (int rs: raw_schedule)
     			schedule.add(rs);
     		
-    		int TURRET_SCOUT = 6;
+    		int TURRET_SCOUT = 4;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -137,21 +140,22 @@ public class RobotPlayer {
 							Clock.yield();
 						}
     				
-    				try {
-	    				while (schedule.get(0) < robot.getRoundNum())
-	    					schedule.remove(0);
-	    				if (schedule.get(0) - robot.getRoundNum() < 128) {
-	    					// activate kamikaze
-	    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
-	    					for (RobotInfo ri : near) {
-	    						if (ri.type == RobotType.SCOUT) {
-		    						robot.broadcastMessageSignal(A2S_MESSAGE, ri.ID, 16);
-		        					schedule.remove(0);
-		        					break;
-	    						}
-	    					}
-	    				}
-    				} catch (Exception e) {e.printStackTrace();}
+    				if (first)
+	    				try {
+		    				while (schedule.get(0) < robot.getRoundNum())
+		    					schedule.remove(0);
+		    				if (schedule.get(0) - robot.getRoundNum() < 128) {
+		    					// activate kamikaze
+		    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
+		    					for (RobotInfo ri : near) {
+		    						if (ri.type == RobotType.SCOUT) {
+			    						robot.broadcastMessageSignal(A2S_MESSAGE, ri.ID, 16);
+			        					schedule.remove(0);
+			        					break;
+		    						}
+		    					}
+		    				}
+	    				} catch (Exception e) {e.printStackTrace();}
     				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
 	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
@@ -447,6 +451,7 @@ public class RobotPlayer {
 		return;
     }
     
+
     /**
      * Pack and attack. It rhymes!
      */
