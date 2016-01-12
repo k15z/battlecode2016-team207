@@ -120,7 +120,7 @@ public class RobotPlayer {
     		for (int rs: raw_schedule)
     			schedule.add(rs);
     		
-    		int TURRET_SCOUT = 4;
+    		int TURRET_SCOUT = 3;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -144,7 +144,7 @@ public class RobotPlayer {
 	    				try {
 		    				while (schedule.get(0) < robot.getRoundNum())
 		    					schedule.remove(0);
-		    				if (schedule.get(0) - robot.getRoundNum() < 128) {
+		    				if (schedule.get(0) - robot.getRoundNum() < 64) {
 		    					// activate kamikaze
 		    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
 		    					for (RobotInfo ri : near) {
@@ -198,6 +198,7 @@ public class RobotPlayer {
     			} catch (Exception e) {
     				e.printStackTrace();
     			}
+    			Clock.yield(); // VERY IMPORTANT DO NOT REMOVE!!!
     		}
     	}
     }
@@ -376,9 +377,12 @@ public class RobotPlayer {
     		}
 	    	
     		// sense enemies
+    		int counter = 0;
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)
 	    		try {
+	    			if (++counter >= 20)
+	    				break;
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {e.printStackTrace();};
     		
@@ -511,20 +515,24 @@ public class RobotPlayer {
      * Kamikaze.
      */
     static void scout_secret() {
-    	//if everything goes wrong
     	int decoy = 0;
     	int sensorRange = robot.getType().sensorRadiusSquared;
     	Direction prev_dir = i2d(random.nextInt(8));
+		MapLocation origin = robot.getLocation();
     	
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    			// score each direction
 	    			double[] score = new double[8];
+
+	    			
+	    			MapLocation myLocation = robot.getLocation();
+	    			if (myLocation.directionTo(origin) != Direction.OMNI)
+	    				score[d2i(myLocation.directionTo(origin))] = 20.0/myLocation.distanceSquaredTo(origin);
 	    			
 	    			// compute hostiles
 	    			int hostiles = 0;
-	    			MapLocation myLocation = robot.getLocation();
 	    			RobotInfo[] bots = robot.senseNearbyRobots(sensorRange);
 	    			RobotInfo[] nearZombies = robot.senseNearbyRobots(9, Team.ZOMBIE);
 	    			int fastZombies = 0;
@@ -602,7 +610,7 @@ public class RobotPlayer {
 		    		if (random.nextDouble() < 0.5)
 		    			Clock.yield();
 	    		}
-	    	} catch (Exception e) {}
+	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
 		}
     }
