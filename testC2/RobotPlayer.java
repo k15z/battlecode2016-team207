@@ -146,9 +146,9 @@ public class RobotPlayer {
     				
     				if (first && schedule.size() > 0)
 	    				try {
-		    				while (schedule.get(0) < robot.getRoundNum())
+		    				while (schedule.size() > 0 && schedule.get(0) < robot.getRoundNum())
 		    					schedule.remove(0);
-		    				if (schedule.get(0) - robot.getRoundNum() < 64) {
+		    				if (schedule.size() > 0 && schedule.get(0) - robot.getRoundNum() < 64) {
 		    					// activate kamikaze
 		    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
 		    					for (RobotInfo ri : near) {
@@ -548,7 +548,6 @@ public class RobotPlayer {
 	    			// score each direction
 	    			double[] score = new double[8];
 
-	    			
 	    			MapLocation myLocation = robot.getLocation();
 	    			if (myLocation.directionTo(origin) != Direction.OMNI)
 	    				score[d2i(myLocation.directionTo(origin))] = 20.0/myLocation.distanceSquaredTo(origin);
@@ -669,19 +668,17 @@ public class RobotPlayer {
                     		while (!robot.isCoreReady())
                     			Clock.yield();
                     		robot.clearRubble(dire);
+                    		
+                    		while (!robot.isCoreReady())
+                    			Clock.yield();
+                            RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+                            for (int i = 0; i < robots.length; i++)
+                                if(robots[i].type == RobotType.BIGZOMBIE && robot.isWeaponReady())
+                                    robot.attackLocation(robots[i].location);
+                            for (int i = 0; i < robots.length; i++)
+                            	if(robots[i].team != robot.getTeam() && robot.isWeaponReady())
+                                   robot.attackLocation(robots[i].location);
                     	}
-                    
-                    //attack
-            		while (!robot.isCoreReady())
-            			Clock.yield();
-                    RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
-                    for (int i = 0; i < robots.length; i++)
-                        if(robots[i].type == RobotType.BIGZOMBIE && robot.isWeaponReady())
-                            robot.attackLocation(robots[i].location);
-                    for (int i = 0; i < robots.length; i++)
-                    	if(robots[i].team != robot.getTeam() && robot.isWeaponReady())
-                           robot.attackLocation(robots[i].location);
-                   
 	    		}
 	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
