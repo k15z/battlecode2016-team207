@@ -59,6 +59,8 @@ public class RobotPlayer {
      * archonflees from it's home.
      */
     static void archon() {
+    	boolean first = false;
+    	
     	{ /* Initialize. */
 	    	// Handle initial signals.
 	    	Signal signal = null;
@@ -70,6 +72,7 @@ public class RobotPlayer {
 	    	try {
 	        	if (signal == null) {
 	        		// I'm the first archon!
+	        		first = true;
 					robot.broadcastMessageSignal(A2A_MESSAGE, A2A_MESSAGE, 1000);
 		        	for (Direction direction : oddDir) {
 		    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET))
@@ -117,7 +120,7 @@ public class RobotPlayer {
     		for (int rs: raw_schedule)
     			schedule.add(rs);
     		
-    		int TURRET_SCOUT = 5;
+    		int TURRET_SCOUT = 3;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -137,21 +140,22 @@ public class RobotPlayer {
 							Clock.yield();
 						}
     				
-    				try {
-	    				while (schedule.size() > 0 && schedule.get(0) < robot.getRoundNum())
-	    					schedule.remove(0);
-	    				if (schedule.size() > 0 && schedule.get(0) - robot.getRoundNum() < 128) {
-	    					// activate kamikaze
-	    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
-	    					for (RobotInfo ri : near) {
-	    						if (ri.type == RobotType.SCOUT) {
-		    						robot.broadcastMessageSignal(A2S_MESSAGE, ri.ID, 16);
-		        					schedule.remove(0);
-		        					break;
-	    						}
-	    					}
-	    				}
-    				} catch (Exception e) {e.printStackTrace();}
+    				if (first && schedule.size() > 0)
+	    				try {
+		    				while (schedule.get(0) < robot.getRoundNum())
+		    					schedule.remove(0);
+		    				if (schedule.get(0) - robot.getRoundNum() < 64) {
+		    					// activate kamikaze
+		    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
+		    					for (RobotInfo ri : near) {
+		    						if (ri.type == RobotType.SCOUT) {
+			    						robot.broadcastMessageSignal(A2S_MESSAGE, ri.ID, 16);
+			        					schedule.remove(0);
+			        					break;
+		    						}
+		    					}
+		    				}
+	    				} catch (Exception e) {e.printStackTrace();}
     				
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
 	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
@@ -194,6 +198,7 @@ public class RobotPlayer {
     			} catch (Exception e) {
     				e.printStackTrace();
     			}
+    			Clock.yield(); // VERY IMPORTANT DO NOT REMOVE!!!
     		}
     	}
     }
@@ -286,6 +291,8 @@ public class RobotPlayer {
 	    				}
 		    			
 	    				// move
+	    				if (robot.senseRubble(robot.getLocation().add(i2d(best_i))) > 0)
+	    					robot.clearRubble(i2d(best_i));
 		    			if (robot.canMove(i2d(best_i)))
 		    				robot.move(i2d(best_i));
 		    			prev_dir = i2d(best_i);
@@ -370,9 +377,12 @@ public class RobotPlayer {
     		}
 	    	
     		// sense enemies
+    		int counter = 0;
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)
 	    		try {
+	    			if (++counter >= 20)
+	    				break;
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {e.printStackTrace();};
     		
@@ -394,6 +404,7 @@ public class RobotPlayer {
     		} catch(Exception e) {};
     		
     		// sabotage?
+    		try {
     		Signal[] signals = robot.emptySignalQueue();
     		for (Signal sig : signals)
     			if (sig.getMessage()[0] == A2S_MESSAGE && sig.getMessage()[1] == robot.getID())
@@ -401,6 +412,8 @@ public class RobotPlayer {
 					System.out.println("Sabatoge time!");
     				scout_secret();
     			}
+    		}
+    		catch(Exception e) {}
     	}
     }
 
@@ -502,20 +515,24 @@ public class RobotPlayer {
      * Kamikaze.
      */
     static void scout_secret() {
-    	//if everything goes wrong
     	int decoy = 0;
     	int sensorRange = robot.getType().sensorRadiusSquared;
     	Direction prev_dir = i2d(random.nextInt(8));
+		MapLocation origin = robot.getLocation();
     	
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    			// score each direction
 	    			double[] score = new double[8];
+
+	    			
+	    			MapLocation myLocation = robot.getLocation();
+	    			if (myLocation.directionTo(origin) != Direction.OMNI)
+	    				score[d2i(myLocation.directionTo(origin))] = 20.0/myLocation.distanceSquaredTo(origin);
 	    			
 	    			// compute hostiles
 	    			int hostiles = 0;
-	    			MapLocation myLocation = robot.getLocation();
 	    			RobotInfo[] bots = robot.senseNearbyRobots(sensorRange);
 	    			RobotInfo[] nearZombies = robot.senseNearbyRobots(9, Team.ZOMBIE);
 	    			int fastZombies = 0;
@@ -593,7 +610,7 @@ public class RobotPlayer {
 		    		if (random.nextDouble() < 0.5)
 		    			Clock.yield();
 	    		}
-	    	} catch (Exception e) {}
+	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
 		}
     }

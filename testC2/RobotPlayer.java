@@ -1,11 +1,15 @@
-package testD0D;
+package testC2;
 
 import battlecode.common.*;
 
 import java.util.*;
 
 /**
- * The D0D. Send soldiers to ambush dens.
+ * The C1A. Builds checker-board of turrets to hide behind and sends scouts 
+ * to patrol the "final" frontiers. Sends kamikaze scouts to lead zombies 
+ * to the enemy team. If the turrets die, run around and play hide-and-seek.
+ * 
+ * WITH SOLDIERS!!!
  */
 public class RobotPlayer {
 	static int A2A_MESSAGE = 0;
@@ -15,10 +19,7 @@ public class RobotPlayer {
 	static RobotController robot;
 	static Direction[] evenDir = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
 	static Direction[] oddDir = {Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST};
-	static Direction[] directions = {
-			Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST,
-			Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST
-		};
+	static Direction[] allDir = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.SOUTH_WEST, Direction.NORTH_WEST, Direction.NORTH_EAST, Direction.SOUTH_EAST};
     
 	/**
 	 * Initializes static variables and switches between different modes of 
@@ -89,18 +90,6 @@ public class RobotPlayer {
 	        		MapLocation src = robot.getLocation();
 	        		MapLocation dest = signal.getLocation();
 	        		
-	        		try {
-	                	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SOLDIER))
-	                		Clock.yield();
-	                	for (Direction dir : directions) {
-			    	    	if (robot.canBuild(dir, RobotType.SOLDIER))
-			    	    		robot.build(dir, RobotType.SOLDIER);
-		                	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SOLDIER))
-		                		Clock.yield();
-			    	    	Clock.yield();
-	                	}
-	        		} catch(Exception e) {e.printStackTrace();}
-	        		
                 	// travel to archons
 	            	while (src.distanceSquaredTo(dest) > 9 && attempts++ < MAX_ATTEMPTS) {
 	                	while (!robot.isCoreReady())
@@ -135,6 +124,7 @@ public class RobotPlayer {
     			schedule.add(rs);
     		
     		int TURRET_SCOUT = 3;
+    		int TURRET_SOLDIER = 6;
     		int ESCAPE_HEALTH = 500;
     		int AVE_NUM_ARCHONS = 3;
     		int dir_i = 0;
@@ -158,7 +148,7 @@ public class RobotPlayer {
 	    				try {
 		    				while (schedule.get(0) < robot.getRoundNum())
 		    					schedule.remove(0);
-		    				if (schedule.get(0) - robot.getRoundNum() < 128) {
+		    				if (schedule.get(0) - robot.getRoundNum() < 64) {
 		    					// activate kamikaze
 		    					RobotInfo[] near = robot.senseNearbyRobots(16, robot.getTeam());
 		    					for (RobotInfo ri : near) {
@@ -170,9 +160,9 @@ public class RobotPlayer {
 		    					}
 		    				}
 	    				} catch (Exception e) {e.printStackTrace();}
-    				
+    				double rand = random.nextDouble();
     				if (random.nextDouble() < 1.0/AVE_NUM_ARCHONS)
-	    				if (random.nextDouble() > 1.0/TURRET_SCOUT) {
+	    				if (random.nextDouble() > 1.0/TURRET_SCOUT && rand > 1.0/TURRET_SOLDIER) {
 		    	    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.TURRET)) {
 		    	    	    		Clock.yield();
 		    	    				if (robot.getHealth() < ESCAPE_HEALTH)
@@ -190,6 +180,24 @@ public class RobotPlayer {
 		    	    	    		robot.build(dir, RobotType.TURRET);
 		    	    	    	dir_i = (dir_i+1)%4;
 		    					dir = evenDir[dir_i];
+	    				} else if(rand < 1.0/TURRET_SOLDIER){
+	    					while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SOLDIER)) {
+	    	    	    		Clock.yield();
+	    	    				if (robot.getHealth() < ESCAPE_HEALTH)
+	    	    					archon_escape();
+	    	    				friendsIn2 = robot.senseNearbyRobots(24, robot.getTeam());
+	    	    				for(RobotInfo toHeal : friendsIn2)
+	    							if(toHeal.health < 99 && toHeal.type != RobotType.ARCHON){
+	    								try {
+	    								robot.repair(toHeal.location);
+	    								} catch(Exception e) {};
+	    								Clock.yield();
+	    							}
+	    	    	    	}
+	    	    	    	if (robot.canBuild(dir, RobotType.SOLDIER))
+	    	    	    		robot.build(dir, RobotType.SOLDIER);
+	    	    	    	dir_i = (dir_i+1)%4;
+	    					dir = evenDir[dir_i];
 	    				} else {
 	    	    	    	while (!robot.isCoreReady() || !robot.hasBuildRequirements(RobotType.SCOUT)) {
 	    	    	    		Clock.yield();
@@ -212,6 +220,7 @@ public class RobotPlayer {
     			} catch (Exception e) {
     				e.printStackTrace();
     			}
+    			Clock.yield(); // VERY IMPORTANT DO NOT REMOVE!!!
     		}
     	}
     }
@@ -390,11 +399,11 @@ public class RobotPlayer {
     		}
 	    	
     		// sense enemies
-    		int sent = 0;
+    		int counter = 0;
     		RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().sensorRadiusSquared);
     		for (RobotInfo enemy : enemies)
 	    		try {
-	    			if (++sent >= 20)
+	    			if (++counter >= 20)
 	    				break;
 	    			robot.broadcastMessageSignal(enemy.location.x, enemy.location.y, 16);
 	    		} catch(Exception e) {e.printStackTrace();};
@@ -473,6 +482,7 @@ public class RobotPlayer {
 		return;
     }
     
+
     /**
      * Pack and attack. It rhymes!
      */
@@ -527,22 +537,21 @@ public class RobotPlayer {
      * Kamikaze.
      */
     static void scout_secret() {
-    	//if everything goes wrong
     	int decoy = 0;
     	int sensorRange = robot.getType().sensorRadiusSquared;
     	Direction prev_dir = i2d(random.nextInt(8));
-    	MapLocation origin = robot.getLocation();
+		MapLocation origin = robot.getLocation();
     	
 		while (true) {
 	    	try {
 	    		if (robot.isCoreReady()) {
 	    			// score each direction
 	    			double[] score = new double[8];
+
 	    			
-	    			// don't go home
 	    			MapLocation myLocation = robot.getLocation();
 	    			if (myLocation.directionTo(origin) != Direction.OMNI)
-						score[d2i(myLocation.directionTo(origin))] = 100.0/(myLocation.distanceSquaredTo(origin)+1);
+	    				score[d2i(myLocation.directionTo(origin))] = 20.0/myLocation.distanceSquaredTo(origin);
 	    			
 	    			// compute hostiles
 	    			int hostiles = 0;
@@ -553,7 +562,7 @@ public class RobotPlayer {
 	    				if(isFastZombie.type == RobotType.FASTZOMBIE)
 	    					fastZombies++;
 	    			
-		    		if(bots.length > 0){
+		    		if(bots.length > 0){	
 	    				for (RobotInfo bot : bots) {
 		    				double current = 0.0;
 		    				if (bot.team == robot.getTeam().opponent()) {
@@ -629,60 +638,52 @@ public class RobotPlayer {
     }
     
     static void soldier() {
-    	Direction prev = directions[random.nextInt(8)];
+    	// initialize
     	
+    	// initialize
+    	int attackRange = 13;
+    	int sightRange = 24;
+    	MapLocation origin = null;
 		while (true) {
 	    	try {
-    			while (!robot.isCoreReady())
-    				Clock.yield();
-    			
-    			RobotInfo[] enemies = robot.senseHostileRobots(robot.getLocation(), robot.getType().attackRadiusSquared);
-    			if (enemies.length > 0) {
-	    			for (RobotInfo enemy : enemies) {
-	    				if (random.nextDouble() < 0.5)
-	    					robot.broadcastSignal(robot.getType().sensorRadiusSquared*10);
-						robot.attackLocation(enemy.location);
-	    			}
-	    			continue;
-    			}
-    			
-    			Signal[] signals = robot.emptySignalQueue();
-    			if (signals.length > 0) {
-    				int moves = 0;
-    				MapLocation dest = signals[random.nextInt(signals.length)].getLocation();
-    				while (robot.getLocation().distanceSquaredTo(dest) > 16 && moves++ < 50) {
-    					Direction dir = robot.getLocation().directionTo(dest);
-    					while (robot.senseRubble(robot.getLocation().add(dir)) > 10)
-    						robot.clearRubble(dir);
-    					if (robot.canMove(dir))
-    						robot.move(dir);
-    					else if (robot.canMove(dir.rotateLeft()))
-    						robot.move(dir.rotateLeft());
-    					else if (robot.canMove(dir.rotateRight()))
-    						robot.move(dir.rotateRight());
-    					else break;
-    					if (robot.canMove(dir))
-    						robot.move(dir);
-    					else if (robot.canMove(dir.rotateLeft()))
-    						robot.move(dir.rotateLeft());
-    					else if (robot.canMove(dir.rotateRight()))
-    						robot.move(dir.rotateRight());
-    					else break;
-    				}
-    			}
-    			
-    			for (RobotInfo bot : robot.senseNearbyRobots(2, robot.getTeam()))
-	    			if (bot.type == RobotType.SOLDIER) {
-	        			if (random.nextDouble() < 0.2)
-	        				robot.move(directions[random.nextInt(8)]);
-	    				break;
-	    			}
-    			
-    			if (random.nextDouble() < 0.5)
-    				robot.move(prev);
-    			if (random.nextDouble() < 0.3)
-    				prev = directions[random.nextInt(8)];
-	    	} catch (Exception e) {}
+	    		if (robot.isCoreReady()){
+	    			if (origin == null)
+	    				origin = robot.getLocation();
+	    			while(!robot.canMove(Direction.NORTH) && !robot.canMove(Direction.EAST) && 
+	    					!robot.canMove(Direction.SOUTH) && !robot.canMove(Direction.WEST)) {
+	    	    			
+	    					Direction dir = oddDir[random.nextInt(4)];
+	    		    		
+	    	    			while(!robot.isCoreReady())
+	    		    			Clock.yield();
+	    	    			
+	    	    			//move
+	    	    			while (!robot.canMove(dir))
+	    		    			dir = oddDir[random.nextInt(4)];
+	    		    		robot.move(dir);
+	        		}
+	    			
+	    			//clear rubble
+		    		for(Direction dire : allDir)
+                    	if(robot.senseRubble(robot.getLocation().add(dire)) > 0) {
+                    		while (!robot.isCoreReady())
+                    			Clock.yield();
+                    		robot.clearRubble(dire);
+                    	}
+                    
+                    //attack
+            		while (!robot.isCoreReady())
+            			Clock.yield();
+                    RobotInfo[] robots = robot.senseNearbyRobots(attackRange);
+                    for (int i = 0; i < robots.length; i++)
+                        if(robots[i].type == RobotType.BIGZOMBIE && robot.isWeaponReady())
+                            robot.attackLocation(robots[i].location);
+                    for (int i = 0; i < robots.length; i++)
+                    	if(robots[i].team != robot.getTeam() && robot.isWeaponReady())
+                           robot.attackLocation(robots[i].location);
+                   
+	    		}
+	    	} catch (Exception e) {e.printStackTrace();}
 	    	Clock.yield();
 		}
     }
@@ -699,6 +700,21 @@ public class RobotPlayer {
 	    	} catch (Exception e) {}
 	    	Clock.yield();
 		}
+    }
+    
+    static void walk(Direction dir){
+    	try{
+    		if (robot.canMove(dir))
+    			robot.move(dir);
+    		else if (robot.canMove(dir.rotateLeft()))
+    			robot.move(dir.rotateLeft());
+    		else if (robot.canMove(dir.rotateRight()))
+    			robot.move(dir.rotateRight());
+    		else if (robot.canMove(dir.rotateRight().rotateRight()))
+    			robot.move(dir.rotateRight().rotateRight());
+    		else if (robot.canMove(dir.rotateLeft().rotateLeft()))
+    			robot.move(dir.rotateLeft().rotateLeft());
+    	} catch(Exception e) {}
     }
     
     /*** NOT USED. ***/
