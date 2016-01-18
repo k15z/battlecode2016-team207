@@ -31,7 +31,7 @@ public class RobotPlayer {
     }
     
     static void archon() {
-    	boolean greedy = false; // collecting parts doesn't work
+    	boolean greedy = true; // collecting parts doesn't work
     	double health = robot.getHealth();
     	int senseRadius = robot.getType().sensorRadiusSquared;
     	while (true) {
